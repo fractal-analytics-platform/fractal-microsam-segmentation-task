@@ -2,7 +2,7 @@
 
 import logging
 
-import numpy as np
+import torch
 from fractal_tasks_utils.segmentation import (
     IteratorConfig,
     compute_segmentation,
@@ -17,19 +17,16 @@ from fractal_microsam_segmentation_task.utils import (
     CreateMaskingRoiTable,
     SkipCreateMaskingRoiTable,
 )
+from fractal_microsam_segmentation_task.utils_segmentation import (
+    MODEL_ENUM,
+    load_model_with_decoder,
+    segment_image,
+)
 
 logger = logging.getLogger("microsam_segmentation_task")
 
 
 # from ngio.images._image import _parse_channel_selection
-
-
-# FIXME: Replace with real segmentation function using microSAM
-def segmentation_function(
-    image_data: np.ndarray, model, **microsam_kwargs
-) -> np.ndarray:
-    """Dummy segmentation function that applies a simple thresholding."""
-    return image_data[image_data > 200]
 
 
 # FIXME: Adapt to simpler channel picker (not a list, but would need to
@@ -109,8 +106,11 @@ def microsam_segmentation_task(
     label_name: str = "{channel_identifier}_microsam_segmented",
     level_path: str | None = None,
     # Iteration parameters
-    model_type="mid-size-lm",
+    model_type: MODEL_ENUM = MODEL_ENUM.VIT_B_LM,
     custom_model: str | None = None,
+    center_distance_threshold: float = 0.5,
+    boundary_distance_threshold: float = 0.5,
+    foreground_threshold: float = 0.5,
     iterator_configuration: IteratorConfig | None = None,
     pre_post_process: SegmentationTransformConfig = Field(  # noqa: B008
         default_factory=SegmentationTransformConfig
@@ -138,8 +138,11 @@ def microsam_segmentation_task(
         level_path (str | None): If the OME-Zarr has multiple resolution levels,
             the level to use can be specified here. If not provided, the highest
             resolution level will be used.
-        model_type (str): TODO implement
+        model_type (MODEL_ENUM): The type of SAM model to use for segmentation. Default = vit_b_lm
         custom_model (str | None): Path to a custom Cellpose model.
+        center_distance_threshold (float): Center distance threshold for decoder mode (default: 0.5)
+        boundary_distance_threshold (float): Boundary distance threshold for decoder mode (default: 0.5)
+        foreground_threshold (float): Foreground threshold for decoder mode (default: 0.5)
         iterator_configuration (IteratorConfiguration | None): Advanced
             configuration to control masked and ROI-based iteration.
         pre_post_process (SegmentationTransformConfig): Configuration for pre- and
@@ -166,17 +169,23 @@ def microsam_segmentation_task(
     )
     logger.info(f"Formatted label name: {label_name=}")
 
-    # FIXME: Model load
     # Based on model_type or custom_model
-    model = 1
-    # model = something()
+    model = load_model_with_decoder(
+        model_type=model_type.value,
+        device="cuda" if torch.cuda.is_available() else "cpu",
+        model_path=custom_model,
+    )
 
     # if advanced_parameters.verbose:
     #     logging.getLogger("cellpose").setLevel(logging.INFO)
     # else:
     #     logging.getLogger("cellpose").setLevel(logging.WARNING)
 
-    microsam_kwargs = {}
+    microsam_kwargs = {
+        "center_distance_threshold": center_distance_threshold,
+        "boundary_distance_threshold": boundary_distance_threshold,
+        "foreground_threshold": foreground_threshold,
+    }
 
     # Set up the segmentation iterator
     iterator = setup_segmentation_iterator(
@@ -191,8 +200,8 @@ def microsam_segmentation_task(
 
     # Run the core segmentation loop
     compute_segmentation(
-        segmentation_func=lambda x: segmentation_function(
-            image_data=x, model=model, **microsam_kwargs
+        segmentation_func=lambda x: segment_image(
+            image=x, segmenter=model, **microsam_kwargs
         ),
         iterator=iterator,
     )

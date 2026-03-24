@@ -26,15 +26,10 @@ authors = [
 
 # Required Python version and dependencies
 requires-python = ">=3.11,<3.15"
-dependencies = [
-    "ngio>=0.5.8,<0.6.0",
-    "scikit-image>=0.26.0",
-    "fractal-task-tools>=0.4.0,<0.5.0",
-    "fractal-tasks-utils>=0.1.4,<0.2",
-]
+
 
 [tool.pixi.dependencies]
-micro_sam = "1.6.2,<2"
+micro_sam = ">=1.6.2,<2"
 
 # Optional dependencies (e.g. for `pip install -e ".[dev]"`, see
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies)
@@ -95,6 +90,10 @@ platforms = ["osx-arm64", "linux-64", "win-64"]
 
 [tool.pixi.pypi-dependencies]
 fractal-microsam-segmentation-task = { path = ".", editable = true }
+ngio = ">=0.5.8,<0.6.0"
+scikit-image = "==0.26.0"
+fractal-task-tools = ">=0.4.0,<0.5.0"
+fractal-tasks-utils = ">=0.1.4,<0.2"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }

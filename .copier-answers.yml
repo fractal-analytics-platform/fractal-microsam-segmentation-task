@@ -1,0 +1,18 @@
+# Do not edit - changes here will be overwritten by Copier
+_commit: v0.6.5
+_src_path: gh:fractal-analytics-platform/fractal-tasks-template
+author_email: niklas.khoss@fmi.ch
+author_name: Niklas Khoss & Joel Luethi
+include_feature_task: false
+include_image_processing_task: false
+include_segmentation_task: true
+mode: customize
+package_name: fractal_microsam_segmentation_task
+project_license: BSD-3-Clause
+project_name: fractal-microsam-segmentation-task
+project_short_description: microSAM segmentation inference for Fractal
+project_url: https://github.com/fractal-analytics-platform/fractal-microsam-segmentation-task
+run_git_init: true
+run_pixi_init_task: true
+segmentation_task: microSAM Segmentation
+

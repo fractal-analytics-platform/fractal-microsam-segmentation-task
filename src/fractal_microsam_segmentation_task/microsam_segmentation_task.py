@@ -3,78 +3,100 @@
 import logging
 
 import numpy as np
+from fractal_tasks_utils.segmentation import (
+    IteratorConfig,
+    compute_segmentation,
+    setup_segmentation_iterator,
+)
+from fractal_tasks_utils.segmentation._transforms import SegmentationTransformConfig
 from ngio import ChannelSelectionModel, open_ome_zarr_container
-from ngio.experimental.iterators import MaskedSegmentationIterator, SegmentationIterator
-from ngio.images._masked_image import MaskedImage
-from pydantic import validate_call
-from skimage.measure import label
-from skimage.morphology import ball, dilation, disk, opening, remove_small_objects
+from pydantic import Field, validate_call
 
-from fractal_microsam_segmentation_task.utils import IteratorConfiguration, MaskingConfiguration
+from fractal_microsam_segmentation_task.utils import (
+    AnyCreateRoiTableModel,
+    CreateMaskingRoiTable,
+    SkipCreateMaskingRoiTable,
+)
 
 logger = logging.getLogger("microsam_segmentation_task")
 
 
-def segmentation_function(
-    int_img: np.ndarray, threshold: int, min_size: int = 50
-) -> np.ndarray:
-    """Example segmentation function.
+# from ngio.images._image import _parse_channel_selection
 
-    This function will need to be adapted to the specific segmentation method.
+
+# FIXME: Replace with real segmentation function using microSAM
+def segmentation_function(
+    image_data: np.ndarray, model, **microsam_kwargs
+) -> np.ndarray:
+    """Dummy segmentation function that applies a simple thresholding."""
+    return image_data[image_data > 200]
+
+
+# FIXME: Adapt to simpler channel picker (not a list, but would need to
+# introduce skip button)
+# def _skip_segmentation(
+#         channel: ChannelSelectionModel,
+#         ome_zarr: OmeZarrContainer
+#     ) -> bool:
+#     """Check wheter to skip the current task based on the channel configuration.
+
+#     If the channel selection specified in the channels parameter is not
+#     valid for the provided OME-Zarr image, this function checks the
+#     skip_if_missing attribute of the channels configuration.
+#     If skip_if_missing is True, the function returns True, indicating that the task
+#     should be skipped. If skip_if_missing is False, a ValueError is raised.
+
+#     Args:
+#         channels (CellposeChannels): The channel selection configuration.
+#         ome_zarr (OmeZarrContainer): The OME-Zarr container to check against.
+
+#     Returns:
+#         bool: True if the task should be skipped due to missing channels,
+#         False otherwise.
+
+#     """
+#     image = ome_zarr.get_image()
+#     try:
+#         _parse_channel_selection(image=image, channel_selection=[channel])
+#     except NgioValueError as e:
+#         if channels.skip_if_missing:
+#             logger.warning(
+#                 f"Channel selection {channels_list} is not valid for the provided "
+#                 "image, but skip_if_missing is set to True. Skipping segmentation."
+#             )
+#             logger.debug(f"Original error message: {e}")
+#             return True
+#         else:
+#             raise ValueError(
+#                 f"Channel selection {channels_list} is not valid for the provided "
+#                 "image. If you want to skip processing when channels are missing, "
+#                 "set skip_if_missing to True."
+#             ) from e
+#     return False
+
+
+def _format_label_name(label_name_template: str, channel_identifier: str) -> str:
+    """Format the label name based on the provided template and channel identifier.
 
     Args:
-        int_img (np.ndarray): Input image to be processed
-        threshold (int): Threshold value for binarization
-        min_size (int): Minimum size of objects to keep
+        label_name_template (str): The template for the label name. This
+        might contain a placeholder "{channel_identifier}" which will be replaced
+        by the channel identifier or no placeholder at all,
+        in which case the channel identifier will be ignored.
+        channel_identifier (str): The channel identifier to insert into the
+            label name template.
 
     Returns:
-        label_img (np.ndarray): Labeled image
+        str: The formatted label name.
     """
-    # Thresholding the images
-    binary_img = int_img >= threshold
-
-    # Removing small objects
-    cleaned_img = remove_small_objects(binary_img, max_size=min_size)
-    # Opening to separate touching objects
-    if cleaned_img.ndim == 2:
-        selem = disk(1)
-    else:
-        selem = ball(1)
-    opened_img = opening(cleaned_img, selem)
-
-    # Optional: Dilation to restore object size
-    dilated_img = dilation(opened_img, selem)
-
-    # Labeling the processed image
-    label_img = label(dilated_img, connectivity=1)
-    assert isinstance(label_img, np.ndarray)
-    return label_img.astype("uint32")
-
-
-def load_masked_image(
-    ome_zarr,
-    masking_configuration: MaskingConfiguration,
-) -> MaskedImage:
-    """Load a masked image from an OME-Zarr based on the masking configuration.
-
-    Args:
-        ome_zarr: The OME-Zarr container.
-        masking_configuration (MaskingConfiguration): Configuration for masking.
-
-    """
-    if masking_configuration.mode == "Table Name":
-        masking_table_name = masking_configuration.identifier
-        masking_label_name = None
-    else:
-        masking_label_name = masking_configuration.identifier
-        masking_table_name = None
-    logger.info(f"Using masking with {masking_table_name=}, {masking_label_name=}")
-
-    # Base Iterator with masking
-    masked_image = ome_zarr.get_masked_image(
-        masking_label_name=masking_label_name, masking_table_name=masking_table_name
-    )
-    return masked_image
+    try:
+        label_name = label_name_template.format(channel_identifier=channel_identifier)
+    except KeyError as e:
+        raise ValueError(
+            "Label Name format error only allowed placeholder is "
+            f"'channel_identifier'. {{{e}}} was provided."
+        ) from e
+    return label_name
 
 
 @validate_call
@@ -84,11 +106,18 @@ def microsam_segmentation_task(
     zarr_url: str,
     # Segmentation parameters
     channel: ChannelSelectionModel,
-    label_name: str | None = None,
-    threshold: int,
-    min_size: int = 50,
+    label_name: str = "{channel_identifier}_microsam_segmented",
+    level_path: str | None = None,
     # Iteration parameters
-    iterator_configuration: IteratorConfiguration | None = None,
+    model_type="mid-size-lm",
+    custom_model: str | None = None,
+    iterator_configuration: IteratorConfig | None = None,
+    pre_post_process: SegmentationTransformConfig = Field(  # noqa: B008
+        default_factory=SegmentationTransformConfig
+    ),
+    create_masking_roi_table: AnyCreateRoiTableModel = Field(  # noqa: B008
+        default_factory=SkipCreateMaskingRoiTable
+    ),
     overwrite: bool = True,
 ) -> None:
     """Segment an image using a simple thresholding method.
@@ -103,12 +132,20 @@ def microsam_segmentation_task(
         zarr_url (str): URL to the OME-Zarr container
         channel (ChannelSelectionModel): Select the input channel to be used for
             segmentation.
-        label_name (str | None): Name of the resulting label image. If not provided,
-            it will be set to "<channel_identifier>_thresholded".
-        threshold (int): Threshold value to be applied.
-        min_size (int): Minimum size of objects. Smaller objects are filtered out.
+        label_name (str): Name of the resulting label image. Optionally, it can contain
+            a placeholder "{channel_identifier}" which will be replaced by the
+            first channel identifier specified in the channels parameter.
+        level_path (str | None): If the OME-Zarr has multiple resolution levels,
+            the level to use can be specified here. If not provided, the highest
+            resolution level will be used.
+        model_type (str): TODO implement
+        custom_model (str | None): Path to a custom Cellpose model.
         iterator_configuration (IteratorConfiguration | None): Advanced
             configuration to control masked and ROI-based iteration.
+        pre_post_process (SegmentationTransformConfig): Configuration for pre- and
+            post-processing transforms applied by the iterator.
+        create_masking_roi_table (AnyCreateRoiTableModel): Configuration to
+            create a masking ROI table after segmentation.
         overwrite (bool): Whether to overwrite an existing label image.
             Defaults to True.
     """
@@ -118,76 +155,57 @@ def microsam_segmentation_task(
     # Open the OME-Zarr container
     ome_zarr = open_ome_zarr_container(zarr_url)
     logger.info(f"{ome_zarr=}")
+    # Validate that the specified channels are present in the image
+    # FIXME: Add channel validation
+    # if _skip_segmentation(channels=channel, ome_zarr=ome_zarr):
+    #     return None
 
-    if label_name is None:
-        label_name = f"{channel.identifier}_thresholded"
-    label = ome_zarr.derive_label(name=label_name, overwrite=overwrite)
-    logger.info(f"Output label image: {label=}")
+    # Format the label name based on the provided template and channel identifier
+    label_name = _format_label_name(
+        label_name_template=label_name, channel_identifier=channel.identifier
+    )
+    logger.info(f"Formatted label name: {label_name=}")
 
-    if iterator_configuration is None:
-        iterator_configuration = IteratorConfiguration()
+    # FIXME: Model load
+    # Based on model_type or custom_model
+    model = 1
+    # model = something()
 
-    if iterator_configuration.masking is None:
-        # Create a basic SegmentationIterator without masking
-        image = ome_zarr.get_image()
-        logger.info(f"{image=}")
-        iterator = SegmentationIterator(
-            input_image=image,
-            output_label=label,
-            channel_selection=channel,
-            axes_order="zyx",
-        )
-    else:
-        # Since masking is requested, we need to determine load a masking image
-        masked_image = load_masked_image(
-            ome_zarr=ome_zarr,
-            masking_configuration=iterator_configuration.masking,
-        )
-        logger.info(f"{masked_image=}")
-        # A masked iterator is created instead of a basic segmentation iterator
-        # This will do two major things:
-        # 1) It will iterate only over the regions of interest defined by the
-        #   masking table or label image
-        # 2) It will only write the segmentation results within the masked regions
-        iterator = MaskedSegmentationIterator(
-            input_image=masked_image,
-            output_label=label,
-            channel_selection=channel,
-            axes_order="zyx",
-        )
-    # Make sure that if we have a time axis, we iterate over it
-    # Strict=False means that if there no z axis or z is size 1, it will still work
-    # If your segmentation needs requires a volume, use strict=True
-    iterator = iterator.by_zyx(strict=False)
-    logger.info(f"Iterator created: {iterator=}")
+    # if advanced_parameters.verbose:
+    #     logging.getLogger("cellpose").setLevel(logging.INFO)
+    # else:
+    #     logging.getLogger("cellpose").setLevel(logging.WARNING)
 
-    if iterator_configuration.roi_table is not None:
-        # If a ROI table is provided, we load it and use it to further restrict
-        # the iteration to the ROIs defined in the table
-        # Be aware that this is not an alternative to masking
-        # but only an additional restriction
-        table = ome_zarr.get_generic_roi_table(name=iterator_configuration.roi_table)
-        logger.info(f"ROI table retrieved: {table=}")
-        iterator = iterator.product(table)
-        logger.info(f"Iterator updated with ROI table: {iterator=}")
+    microsam_kwargs = {}
 
-    # Keep track of the maximum label to ensure unique across iterations
-    max_label = 0
-    #
-    # Core processing loop
-    #
-    logger.info("Starting processing...")
-    for image_data, writer in iterator.iter_as_numpy():
-        label_img = segmentation_function(
-            int_img=image_data, threshold=threshold, min_size=min_size
-        )
-        # Ensure unique labels across different chunks
-        label_img = np.where(label_img == 0, 0, label_img + max_label)
-        max_label = max(max_label, label_img.max())
-        writer(label_img)
-    # No need to call label.consolidate()
-    # SegmentationIterator handles this
+    # Set up the segmentation iterator
+    iterator = setup_segmentation_iterator(
+        zarr_url=zarr_url,
+        channels=[channel],
+        output_label_name=label_name,
+        level_path=level_path,
+        iterator_configuration=iterator_configuration,
+        segmentation_transform_config=pre_post_process,
+        overwrite=overwrite,
+    )
+
+    # Run the core segmentation loop
+    compute_segmentation(
+        segmentation_func=lambda x: segmentation_function(
+            image_data=x, model=model, **microsam_kwargs
+        ),
+        iterator=iterator,
+    )
     logger.info(f"label {label_name} successfully created at {zarr_url}")
+
+    # Building a masking roi table
+    if isinstance(create_masking_roi_table, CreateMaskingRoiTable):
+        table_name = create_masking_roi_table.get_table_name(label_name=label_name)
+        label = ome_zarr.get_label(name=label_name, path=level_path)
+        masking_roi_table = label.build_masking_roi_table()
+        ome_zarr.add_table(
+            name=table_name, table=masking_roi_table, overwrite=overwrite
+        )
     return None
 
 

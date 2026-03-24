@@ -43,34 +43,140 @@
             "title": "ChannelSelectionModel",
             "type": "object"
           },
-          "IteratorConfiguration": {
-            "description": "Advanced Masking configuration.",
+          "CreateMaskingRoiTable": {
+            "description": "Create Masking ROI Table Configuration.",
+            "properties": {
+              "mode": {
+                "const": "Create Masking ROI Table",
+                "default": "Create Masking ROI Table",
+                "title": "Mode",
+                "type": "string"
+              },
+              "table_name": {
+                "default": "{label_name}_masking_ROI_table",
+                "title": "Table Name",
+                "type": "string"
+              }
+            },
+            "title": "CreateMaskingRoiTable",
+            "type": "object"
+          },
+          "GaussianBlurConfig": {
+            "description": "Configuration for Gaussian blur transformation.",
+            "properties": {
+              "type": {
+                "const": "Gaussian Blur Filter",
+                "default": "Gaussian Blur Filter",
+                "description": "Transformation type identifier for Gaussian blur filtering.",
+                "title": "Type",
+                "type": "string"
+              },
+              "sigma_xy": {
+                "default": 2.0,
+                "description": "Standard deviation for Gaussian kernel in XY plane.",
+                "exclusiveMinimum": 0,
+                "title": "Sigma XY",
+                "type": "number"
+              },
+              "sigma_z": {
+                "description": "Standard deviation for Gaussian kernel in Z axis.\nIf not specified, no blurring is applied in Z axis.",
+                "title": "Sigma Z",
+                "type": "number"
+              }
+            },
+            "title": "GaussianBlurConfig",
+            "type": "object"
+          },
+          "HistogramEqualizationConfig": {
+            "description": "Configuration for Contrast Limited Adaptive Histogram Equalization (CLAHE).",
+            "properties": {
+              "type": {
+                "const": "Histogram Equalization",
+                "default": "Histogram Equalization",
+                "description": "Transformation type identifier for histogram equalization.",
+                "title": "Type",
+                "type": "string"
+              },
+              "kernel_size_xy": {
+                "description": "Shape of kernel in XY plane. If None, the default is 1/8 of image height by\n1/8 of its width.",
+                "title": "Kernel Size XY",
+                "type": "integer"
+              },
+              "kernel_size_z": {
+                "description": "Shape of kernel in Z axis. If None, the default is 1/8 of image height by\n1/8 of its width.",
+                "title": "Kernel Size Z",
+                "type": "integer"
+              },
+              "clip_limit": {
+                "default": 0.01,
+                "description": "Clipping limit, normalized between 0 and 1 (higher values give more contrast).",
+                "maximum": 1,
+                "minimum": 0,
+                "title": "Clip Limit",
+                "type": "number"
+              },
+              "nbins": {
+                "default": 256,
+                "description": "Number of gray bins for histogram (\"data range\").",
+                "title": "Nbins",
+                "type": "integer"
+              }
+            },
+            "title": "HistogramEqualizationConfig",
+            "type": "object"
+          },
+          "IteratorConfig": {
+            "description": "Advanced iterator configuration.",
             "properties": {
               "masking": {
-                "$ref": "#/$defs/MaskingConfiguration",
-                "description": "If configured, the segmentation will be only saved within the mask region.\nwill be applied based on the provided masking configuration.",
+                "default": {
+                  "mode": "No Masking"
+                },
+                "description": "If set, the segmentation will be performed only within the confines of\nthe specified mask. A mask can be specified either by a label image or a\nMasking ROI table.",
+                "discriminator": {
+                  "mapping": {
+                    "Masking": "#/$defs/MaskingConfig",
+                    "No Masking": "#/$defs/NoMaskingConfig"
+                  },
+                  "propertyName": "mode"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/NoMaskingConfig"
+                  },
+                  {
+                    "$ref": "#/$defs/MaskingConfig"
+                  }
+                ],
                 "title": "Masking Iterator Configuration"
               },
               "roi_table": {
-                "description": "Name of a ROI table. If provided, the segmentation will be performed for each ROI\nin the specified ROI table.",
+                "description": "Name of a ROI table. If set, the segmentation will be applied to each ROI\nin the table individually. This option can be combined with masking.",
                 "title": "Iterate Over ROIs",
                 "type": "string"
               }
             },
-            "title": "IteratorConfiguration",
+            "title": "IteratorConfig",
             "type": "object"
           },
-          "MaskingConfiguration": {
+          "MaskingConfig": {
             "description": "Masking configuration.",
             "properties": {
               "mode": {
+                "const": "Masking",
+                "default": "Masking",
+                "description": "If set to \"No Masking\", the segmentation will be performed without any masking,\nwhile if set to \"Masking\", the segmentation will be performed only within the\nthe confines of the specified mask.",
+                "title": "Mode",
+                "type": "string"
+              },
+              "masking_source": {
                 "default": "Table Name",
-                "description": "Mode of masking to be applied. If \"Table Name\", the identifier refers to a\nmasking table name.\nIf \"Table Name\", the identifier refers to a masking table name.\nIf \"Label Name\", the identifier refers to a label image name.",
+                "description": "Mode of masking to be applied.\n    - If \"Table Name\", the identifier refers to a table name. This must identify\n    a valid masking ROI table in the ome-Zarr.\n    - If \"Label Name\", the identifier refers to a label image name in the ome-Zarr.\n    In this case, the masking roi table will be built on the fly from the label\n    image.",
                 "enum": [
                   "Table Name",
                   "Label Name"
                 ],
-                "title": "Mode",
+                "title": "Masking Source",
                 "type": "string"
               },
               "identifier": {
@@ -79,7 +185,139 @@
                 "type": "string"
               }
             },
-            "title": "MaskingConfiguration",
+            "required": [
+              "identifier"
+            ],
+            "title": "MaskingConfig",
+            "type": "object"
+          },
+          "MedianFilterConfig": {
+            "description": "Configuration for Median filter transformation.",
+            "properties": {
+              "type": {
+                "const": "Median Filter",
+                "default": "Median Filter",
+                "description": "Transformation type identifier for median filtering.",
+                "title": "Type",
+                "type": "string"
+              },
+              "size_xy": {
+                "default": 2,
+                "description": "Size in pixels of the median filter in XY plane.",
+                "exclusiveMinimum": 0,
+                "title": "Size XY",
+                "type": "integer"
+              },
+              "size_z": {
+                "description": "Size in pixels of the median filter in Z axis.\nIf not specified, no filtering is applied in Z axis.",
+                "title": "Size Z",
+                "type": "integer"
+              }
+            },
+            "title": "MedianFilterConfig",
+            "type": "object"
+          },
+          "NoMaskingConfig": {
+            "description": "No masking configuration.",
+            "properties": {
+              "mode": {
+                "const": "No Masking",
+                "default": "No Masking",
+                "description": "If set to \"No Masking\", the segmentation will be performed without any masking,\nwhile if set to \"Masking\", the segmentation will be performed only within the\nthe confines of the specified mask.",
+                "title": "Mode",
+                "type": "string"
+              }
+            },
+            "title": "NoMaskingConfig",
+            "type": "object"
+          },
+          "SegmentationTransformConfig": {
+            "description": "Configuration for pre- and post-processing steps.",
+            "properties": {
+              "pre_process": {
+                "default": [],
+                "description": "List of pre-processing steps to be applied before segmentation.",
+                "items": {
+                  "discriminator": {
+                    "mapping": {
+                      "Gaussian Blur Filter": "#/$defs/GaussianBlurConfig",
+                      "Histogram Equalization": "#/$defs/HistogramEqualizationConfig",
+                      "Median Filter": "#/$defs/MedianFilterConfig"
+                    },
+                    "propertyName": "type"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/GaussianBlurConfig"
+                    },
+                    {
+                      "$ref": "#/$defs/MedianFilterConfig"
+                    },
+                    {
+                      "$ref": "#/$defs/HistogramEqualizationConfig"
+                    }
+                  ]
+                },
+                "title": "Pre Process",
+                "type": "array"
+              },
+              "post_process": {
+                "default": [],
+                "description": "List of post-processing steps to be applied after segmentation.",
+                "items": {
+                  "discriminator": {
+                    "mapping": {
+                      "Size Filter": "#/$defs/SizeFilterConfig"
+                    },
+                    "propertyName": "type"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/SizeFilterConfig"
+                    }
+                  ]
+                },
+                "title": "Post Process",
+                "type": "array"
+              }
+            },
+            "title": "SegmentationTransformConfig",
+            "type": "object"
+          },
+          "SizeFilterConfig": {
+            "description": "Configuration for size filter post-processing.",
+            "properties": {
+              "type": {
+                "const": "Size Filter",
+                "default": "Size Filter",
+                "description": "Transformation type identifier for size filtering.",
+                "title": "Type",
+                "type": "string"
+              },
+              "min_size": {
+                "description": "Minimum size in pixels for objects to keep.\nObjects smaller than this size will be removed.",
+                "minimum": 0,
+                "title": "Min Size",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "min_size"
+            ],
+            "title": "SizeFilterConfig",
+            "type": "object"
+          },
+          "SkipCreateMaskingRoiTable": {
+            "description": "Skip Creating Masking ROI Table Configuration.",
+            "properties": {
+              "mode": {
+                "const": "Skip Creating Masking ROI Table",
+                "default": "Skip Creating Masking ROI Table",
+                "title": "Mode",
+                "type": "string"
+              }
+            },
+            "title": "SkipCreateMaskingRoiTable",
             "type": "object"
           }
         },
@@ -96,25 +334,61 @@
             "description": "Select the input channel to be used for segmentation."
           },
           "label_name": {
+            "default": "{channel_identifier}_microsam_segmented",
             "title": "Label Name",
             "type": "string",
             "description": "Name of the resulting label image. If not provided, it will be set to \"<channel_identifier>_thresholded\"."
           },
-          "threshold": {
-            "title": "Threshold",
-            "type": "integer",
-            "description": "Threshold value to be applied."
+          "level_path": {
+            "title": "Level Path",
+            "type": "string",
+            "description": "Missing description"
           },
-          "min_size": {
-            "default": 50,
-            "title": "Min Size",
-            "type": "integer",
-            "description": "Minimum size of objects. Smaller objects are filtered out."
+          "model_type": {
+            "default": "mid-size-lm",
+            "title": "Model Type",
+            "description": "Missing description"
+          },
+          "custom_model": {
+            "title": "Custom Model",
+            "type": "string",
+            "description": "Missing description"
           },
           "iterator_configuration": {
-            "$ref": "#/$defs/IteratorConfiguration",
+            "$ref": "#/$defs/IteratorConfig",
             "title": "Iterator Configuration",
             "description": "Advanced configuration to control masked and ROI-based iteration."
+          },
+          "pre_post_process": {
+            "$ref": "#/$defs/SegmentationTransformConfig",
+            "default": {
+              "pre_process": [],
+              "post_process": []
+            },
+            "title": "Pre Post Process",
+            "description": "Missing description"
+          },
+          "create_masking_roi_table": {
+            "default": {
+              "mode": "Skip Creating Masking ROI Table"
+            },
+            "discriminator": {
+              "mapping": {
+                "Create Masking ROI Table": "#/$defs/CreateMaskingRoiTable",
+                "Skip Creating Masking ROI Table": "#/$defs/SkipCreateMaskingRoiTable"
+              },
+              "propertyName": "mode"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/CreateMaskingRoiTable"
+              },
+              {
+                "$ref": "#/$defs/SkipCreateMaskingRoiTable"
+              }
+            ],
+            "title": "Create Masking Roi Table",
+            "description": "Missing description"
           },
           "overwrite": {
             "default": true,
@@ -125,124 +399,10 @@
         },
         "required": [
           "zarr_url",
-          "channel",
-          "threshold"
+          "channel"
         ],
         "type": "object",
-        "title": "ThresholdSegmentationTask"
-      },
-      "docs_link": "https://github.com/fractal-analytics-platform/fractal-microsam-segmentation-task"
-    },
-    {
-      "name": "Gaussian Blur",
-      "output_types": {
-        "is_blurred": true
-      },
-      "category": "Image Processing",
-      "tags": [
-        "Denoising",
-        "Gaussian Blur"
-      ],
-      "docs_info": "### Purpose\n- Description and documentation of the Task functionality\n- Bullet points that cover main features of the tasks.\n- Can use **full** *markdown* formatting (including embedding images).\n\n### Outputs\n- Optional section on what kind of outputs the task generates. For the thresholding_task: Generates a new label image named `label_name`.\n\n### Limitations\n- List known limitations of the task (e.g. only works for certain data types).",
-      "type": "parallel",
-      "executable_parallel": "gaussian_blur_task.py",
-      "meta_parallel": {
-        "cpus_per_task": 1,
-        "mem": 4000
-      },
-      "args_schema_parallel": {
-        "additionalProperties": false,
-        "properties": {
-          "zarr_url": {
-            "title": "Zarr Url",
-            "type": "string",
-            "description": "URL to the OME-Zarr container."
-          },
-          "output_image_suffix": {
-            "default": "gaussian_blur",
-            "title": "Output Image Suffix",
-            "type": "string",
-            "description": "Suffix for the output image name."
-          },
-          "sigma_xy": {
-            "default": 1.0,
-            "title": "Sigma Xy",
-            "type": "number",
-            "description": "Standard deviation for Gaussian kernel in the XY plane. Defaults to 1.0."
-          },
-          "sigma_z": {
-            "title": "Sigma Z",
-            "type": "number",
-            "description": "Standard deviation for Gaussian kernel in the Z direction. If None, the smoothing will be applied only in XY."
-          },
-          "overwrite": {
-            "default": true,
-            "title": "Overwrite",
-            "type": "boolean",
-            "description": "Whether to overwrite an existing output image. Defaults to True."
-          },
-          "overwrite_input": {
-            "default": false,
-            "title": "Overwrite Input",
-            "type": "boolean",
-            "description": "If True, the task will first create a new OME-Zarr image with the Gaussian blur applied, and then overwrite the original image with the new one. Defaults to False."
-          }
-        },
-        "required": [
-          "zarr_url"
-        ],
-        "type": "object",
-        "title": "GaussianBlurTask"
-      },
-      "docs_link": "https://github.com/fractal-analytics-platform/fractal-microsam-segmentation-task"
-    },
-    {
-      "name": "Region Props Features",
-      "category": "Measurement",
-      "tags": [
-        "Region Properties",
-        "Intensity",
-        "Morphology"
-      ],
-      "docs_info": "### Purpose\n- Description and documentation of the Task functionality\n- Bullet points that cover main features of the tasks.\n- Can use **full** *markdown* formatting (including embedding images).\n\n### Outputs\n- Optional section on what kind of outputs the task generates. For the thresholding_task: Generates a new label image named `label_name`.\n\n### Limitations\n- List known limitations of the task (e.g. only works for certain data types).",
-      "type": "parallel",
-      "executable_parallel": "region_props_features_task.py",
-      "meta_parallel": {
-        "cpus_per_task": 1,
-        "mem": 4000
-      },
-      "args_schema_parallel": {
-        "additionalProperties": false,
-        "properties": {
-          "zarr_url": {
-            "title": "Zarr Url",
-            "type": "string",
-            "description": "URL to the OME-Zarr container"
-          },
-          "label_image_name": {
-            "title": "Label Image Name",
-            "type": "string",
-            "description": "Name of the label image to analyze."
-          },
-          "output_table_name": {
-            "default": "region_props_features",
-            "title": "Output Table Name",
-            "type": "string",
-            "description": "Name for the output feature table."
-          },
-          "overwrite": {
-            "default": true,
-            "title": "Overwrite",
-            "type": "boolean",
-            "description": "Whether to overwrite an existing feature table. Defaults to True."
-          }
-        },
-        "required": [
-          "zarr_url",
-          "label_image_name"
-        ],
-        "type": "object",
-        "title": "RegionPropsFeaturesTask"
+        "title": "MicrosamSegmentationTask"
       },
       "docs_link": "https://github.com/fractal-analytics-platform/fractal-microsam-segmentation-task"
     }

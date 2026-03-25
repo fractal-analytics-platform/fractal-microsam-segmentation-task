@@ -159,6 +159,27 @@
             "title": "IteratorConfig",
             "type": "object"
           },
+          "MODEL_ENUM": {
+            "enum": [
+              "vit_h",
+              "vit_l",
+              "vit_b",
+              "vit_t",
+              "vit_l_lm",
+              "vit_b_lm",
+              "vit_t_lm",
+              "vit_l_em_organelles",
+              "vit_b_em_organelles",
+              "vit_t_em_organelles",
+              "vit_b_medical_imaging",
+              "vit_h_histopathology",
+              "vit_l_histopathology",
+              "vit_b_histopathology"
+            ],
+            "title": "MODEL_ENUM",
+            "type": "string",
+            "description": "Missing description for MODEL_ENUM."
+          },
           "MaskingConfig": {
             "description": "Masking configuration.",
             "properties": {
@@ -345,14 +366,33 @@
             "description": "If the OME-Zarr has multiple resolution levels, the level to use can be specified here. If not provided, the highest resolution level will be used."
           },
           "model_type": {
-            "default": "mid-size-lm",
+            "$ref": "#/$defs/MODEL_ENUM",
+            "default": "vit_b_lm",
             "title": "Model Type",
-            "description": "TODO implement"
+            "description": "The type of SAM model to use for segmentation. Default = vit_b_lm"
           },
           "custom_model": {
             "title": "Custom Model",
             "type": "string",
             "description": "Path to a custom Cellpose model."
+          },
+          "center_distance_threshold": {
+            "default": 0.5,
+            "title": "Center Distance Threshold",
+            "type": "number",
+            "description": "Center distance threshold for decoder mode (default: 0.5)"
+          },
+          "boundary_distance_threshold": {
+            "default": 0.5,
+            "title": "Boundary Distance Threshold",
+            "type": "number",
+            "description": "Boundary distance threshold for decoder mode (default: 0.5)"
+          },
+          "foreground_threshold": {
+            "default": 0.5,
+            "title": "Foreground Threshold",
+            "type": "number",
+            "description": "Foreground threshold for decoder mode (default: 0.5)"
           },
           "iterator_configuration": {
             "$ref": "#/$defs/IteratorConfig",

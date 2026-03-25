@@ -1,6 +1,8 @@
+"""Segmentation utils"""
+
 import logging
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 from micro_sam.automatic_segmentation import (
@@ -12,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class MODEL_ENUM(Enum):
+    """Enum for model selection in micro-SAM segmentation."""
+
     VIT_H = "vit_h"
     VIT_L = "vit_l"
     VIT_B = "vit_b"
@@ -35,13 +39,15 @@ def load_model_with_decoder(
 ) -> InstanceSegmentationWithDecoder:
     """Load an exported model with decoder module for segmentation.
 
-    This uses micro-SAM's get_predictor_and_segmenter to load the segmentation which handles decoder-based (AIS) mode.
+    This uses micro-SAM's get_predictor_and_segmenter to load the
+    egmentation which handles decoder-based (AIS) mode.
 
     Args:
         model_type: SAM model type (e.g., 'vit_b_lm', 'vit_l_lm')
         device: Device to load model on ('cuda' or 'cpu')
         model_path: Path to a custom model checkpoint (.pt file). If None, the
-            pre-trained micro-SAM model for `model_type` is downloaded/used from cache.
+            pre-trained micro-SAM model for `model_type` is downloaded/used
+            from cache.
 
     Returns:
         segmenter: InstanceSegmentationWithDecoder for generating masks
@@ -52,7 +58,8 @@ def load_model_with_decoder(
     logger.info(f"Loading model with {model_type} segmentation")
 
     # Use get_predictor_and_segmenter which properly handles both modes.
-    # When checkpoint=None, micro-SAM downloads/uses the cached pre-trained model for model_type.
+    # When checkpoint=None, micro-SAM downloads/uses the cached pre-trained
+    # model for model_type.
     _, segmenter = get_predictor_and_segmenter(
         model_type=model_type,
         checkpoint=model_path,
@@ -72,7 +79,7 @@ def load_model_with_decoder(
 def segment_image(
     image: np.ndarray,
     segmenter: InstanceSegmentationWithDecoder,
-    generate_kwargs: Optional[Dict[str, Any]] = None,
+    generate_kwargs: Optional[dict[str, Any]] = None,
 ) -> np.ndarray:
     """Run instance segmentation on a single image.
 

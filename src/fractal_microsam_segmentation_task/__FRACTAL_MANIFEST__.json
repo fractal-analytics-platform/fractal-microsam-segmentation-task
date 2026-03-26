@@ -160,6 +160,7 @@
             "type": "object"
           },
           "MODEL_ENUM": {
+            "description": "Enum for model selection in micro-SAM segmentation.",
             "enum": [
               "vit_h",
               "vit_l",
@@ -177,8 +178,7 @@
               "vit_b_histopathology"
             ],
             "title": "MODEL_ENUM",
-            "type": "string",
-            "description": "Missing description for MODEL_ENUM."
+            "type": "string"
           },
           "MaskingConfig": {
             "description": "Masking configuration.",

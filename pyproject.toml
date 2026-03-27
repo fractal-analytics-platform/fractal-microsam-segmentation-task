@@ -39,6 +39,7 @@ dev = [
     "jsonschema",
     "ruff",
     "pre-commit",
+    "fractal-task-tools",
 ]
 
 # https://docs.astral.sh/ruff
@@ -93,9 +94,11 @@ ngio = ">=0.5.8,<0.6.0"
 
 [tool.pixi.pypi-dependencies]
 fractal-microsam-segmentation-task = { path = ".", editable = true }
-scikit-image = "==0.26.0"
 fractal-task-tools = ">=0.4.0,<0.5.0"
 fractal-tasks-utils = ">=0.1.4,<0.2"
+
+[tool.pixi.feature.dev.pypi-dependencies]
+fractal-microsam-segmentation-task = { path = ".", editable = true, extras = ["dev"] }
 
 [tool.pixi.environments]
 default = { solve-group = "default" }

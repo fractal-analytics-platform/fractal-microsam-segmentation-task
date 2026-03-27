@@ -6201,10 +6201,11 @@ packages:
   timestamp: 1773138658549
 - pypi: ./
   name: fractal-microsam-segmentation-task
-  version: 0.1.1.dev7+g1b1f0697a
-  sha256: 22ff634e5c27848f22c9697ca56eeecbc662298b7f52a233a08b130269903dd7
+  version: 0.1.1.dev10+g9e61ade51
+  sha256: 1aa3cf9f2b95b4710e544607281784713e06f220e76a3b071286df81fa1c905d
   requires_dist:
   - devtools ; extra == 'dev'
+  - fractal-task-tools ; extra == 'dev'
   - hatch ; extra == 'dev'
   - jsonschema ; extra == 'dev'
   - notebook ; extra == 'dev'

@@ -201,7 +201,7 @@ def microsam_segmentation_task(
     # Run the core segmentation loop
     compute_segmentation(
         segmentation_func=lambda x: segment_image(
-            image=x, segmenter=model, **microsam_kwargs
+            image=x, segmenter=model, generate_kwargs=microsam_kwargs
         ),
         iterator=iterator,
     )

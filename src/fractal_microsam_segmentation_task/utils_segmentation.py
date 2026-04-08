@@ -40,7 +40,7 @@ def load_model_with_decoder(
     """Load an exported model with decoder module for segmentation.
 
     This uses micro-SAM's get_predictor_and_segmenter to load the
-    egmentation which handles decoder-based (AIS) mode.
+    segmentation which handles decoder-based (AIS) mode.
 
     Args:
         model_type: SAM model type (e.g., 'vit_b_lm', 'vit_l_lm')
@@ -64,7 +64,7 @@ def load_model_with_decoder(
         model_type=model_type,
         checkpoint=model_path,
         device=device,
-        amg=False,
+        segmentation_mode="ais",
     )
 
     if not isinstance(segmenter, InstanceSegmentationWithDecoder):
@@ -98,17 +98,21 @@ def segment_image(
             "segmenter must be InstanceSegmentationWithDecoder for AIS segmentation"
         )
 
-    # Decoder-based segmentation: use initialize + generate pattern
-    segmenter.initialize(image)
-    predictions = segmenter.generate(**generate_kwargs)
+    # micro_sam interprets image.shape[-1] as channels on 3-D arrays, so
+    # always pass a 2-D (H, W) array. Remember the original shape so we can
+    # restore extra leading dimensions for the writer.
+    extra_dims = image.shape[:-2]  # e.g. (1,) for (1, H, W), () for (H, W)
+    image_2d = image.reshape(-1, image.shape[-2], image.shape[-1])[0]  # (H, W)
 
-    # Convert predictions (list of dicts) to label image
-    masks = np.zeros(image.shape, dtype=np.uint32)
-    for idx, pred in enumerate(predictions, start=1):
-        mask = pred["segmentation"]
-        masks[mask > 0] = idx
+    print(f"Image shape for micro_sam: {image_2d.shape}, {generate_kwargs=}")
+    segmenter.initialize(image_2d)
+    # generate() returns a (H, W) label array with integer instance IDs
+    labels_2d = segmenter.generate(**generate_kwargs)
 
-        return masks
-    else:
-        # return empty mask with same shape as image, if
-        return np.zeros(image.shape, dtype=np.uint32)
+    print(f"Generated {labels_2d.max()} instances, shape={labels_2d.shape}")
+
+    # Restore leading dimensions so the ngio writer can squeeze them back out
+    for _ in extra_dims:
+        labels_2d = labels_2d[np.newaxis]
+
+    return labels_2d.astype(np.uint32)

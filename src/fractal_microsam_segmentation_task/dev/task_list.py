@@ -18,7 +18,7 @@ TASK_LIST = [
         executable="microsam_segmentation_task.py",
         # Modify the meta according to your task requirements
         # If the task requires a GPU, add "needs_gpu": True
-        meta={"cpus_per_task": 1, "mem": 4000},
+        meta={"cpus_per_task": 4, "mem": 16000, "needs_gpu": True},
         category="Segmentation",
         tags=["Instance Segmentation", "Classical segmentation"],
         docs_info="file:docs_info/microsam_segmentation_task.md",

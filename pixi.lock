@@ -5,8 +5,6 @@ environments:
     - url: https://conda.anaconda.org/conda-forge/
     indexes:
     - https://pypi.org/simple
-    options:
-      pypi-prerelease-mode: if-necessary-or-explicit
     packages:
       linux-64:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-7_kmp_llvm.conda
@@ -1413,8 +1411,6 @@ environments:
     - url: https://conda.anaconda.org/conda-forge/
     indexes:
     - https://pypi.org/simple
-    options:
-      pypi-prerelease-mode: if-necessary-or-explicit
     packages:
       linux-64:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-7_kmp_llvm.conda
@@ -6201,7 +6197,7 @@ packages:
   timestamp: 1773138658549
 - pypi: ./
   name: fractal-microsam-segmentation-task
-  version: 0.1.1.dev10+g9e61ade51
+  version: 0.1.dev13+g1e9bc8a1d
   sha256: 1aa3cf9f2b95b4710e544607281784713e06f220e76a3b071286df81fa1c905d
   requires_dist:
   - devtools ; extra == 'dev'
@@ -6214,6 +6210,7 @@ packages:
   - requests ; extra == 'dev'
   - ruff ; extra == 'dev'
   requires_python: '>=3.11,<3.15'
+  editable: true
 - pypi: https://files.pythonhosted.org/packages/f8/ad/3ceb4840530423221a7ca7edcd88db7c23c5b811bdda2c97ca4a9b5d7e73/fractal_task_tools-0.4.0-py3-none-any.whl
   name: fractal-task-tools
   version: 0.4.0

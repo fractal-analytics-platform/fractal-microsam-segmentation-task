@@ -12,8 +12,9 @@
       "type": "parallel",
       "executable_parallel": "microsam_segmentation_task.py",
       "meta_parallel": {
-        "cpus_per_task": 1,
-        "mem": 4000
+        "cpus_per_task": 4,
+        "mem": 16000,
+        "needs_gpu": true
       },
       "args_schema_parallel": {
         "$defs": {
@@ -374,7 +375,7 @@
           "custom_model": {
             "title": "Custom Model",
             "type": "string",
-            "description": "Path to a custom Cellpose model."
+            "description": "Path to a custom SAM model."
           },
           "center_distance_threshold": {
             "default": 0.5,

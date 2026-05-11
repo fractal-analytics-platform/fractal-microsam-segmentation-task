@@ -13,6 +13,7 @@ from micro_sam.instance_segmentation import InstanceSegmentationWithDecoder
 logger = logging.getLogger(__name__)
 
 
+# TODO add easy names for models
 class MODEL_ENUM(Enum):
     """Enum for model selection in micro-SAM segmentation."""
 
@@ -103,13 +104,13 @@ def segment_image(
     # restore extra leading dimensions for the writer.
     extra_dims = image.shape[:-2]  # e.g. (1,) for (1, H, W), () for (H, W)
     image_2d = image.reshape(-1, image.shape[-2], image.shape[-1])[0]  # (H, W)
+    logger.debug(f"Image shape for micro_sam: {image_2d.shape}, {generate_kwargs=}")
 
-    print(f"Image shape for micro_sam: {image_2d.shape}, {generate_kwargs=}")
     segmenter.initialize(image_2d)
     # generate() returns a (H, W) label array with integer instance IDs
     labels_2d = segmenter.generate(**generate_kwargs)
 
-    print(f"Generated {labels_2d.max()} instances, shape={labels_2d.shape}")
+    logger.info(f"Generated {labels_2d.max()} instances, shape={labels_2d.shape}")
 
     # Restore leading dimensions so the ngio writer can squeeze them back out
     for _ in extra_dims:

@@ -139,7 +139,7 @@ def microsam_segmentation_task(
             the level to use can be specified here. If not provided, the highest
             resolution level will be used.
         model_type (MODEL_ENUM): The type of SAM model to use for segmentation. Default = vit_b_lm
-        custom_model (str | None): Path to a custom Cellpose model.
+        custom_model (str | None): Path to a custom SAM model.
         center_distance_threshold (float): Center distance threshold for decoder mode (default: 0.5)
         boundary_distance_threshold (float): Boundary distance threshold for decoder mode (default: 0.5)
         foreground_threshold (float): Foreground threshold for decoder mode (default: 0.5)

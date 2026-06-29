@@ -1,6 +1,9 @@
 """Segmentation utils"""
 
 import logging
+import random
+import time
+from collections.abc import Callable
 from enum import Enum
 from typing import Any, Optional
 
@@ -33,6 +36,48 @@ class MODEL_ENUM(Enum):
     VIT_B_HISTOPATHOLOGY = "vit_b_histopathology"
 
 
+def _load_with_retry(
+    loader: Callable[[], InstanceSegmentationWithDecoder],
+    description: str,
+    max_attempts: int = 10,
+) -> InstanceSegmentationWithDecoder:
+    """Load a micro-SAM model with retry logic for cluster safety.
+
+    Multiple parallel workers may attempt to load or download the same
+    checkpoint simultaneously, which can produce stale file handle errors on
+    network-mounted filesystems. Retries with random backoff to recover.
+
+    Args:
+        loader: Zero-argument callable that returns the loaded segmenter.
+        description: Human-readable description used in log/error messages.
+        max_attempts: Maximum number of attempts before raising.
+
+    Returns:
+        Loaded InstanceSegmentationWithDecoder.
+
+    Raises:
+        RuntimeError: If the model cannot be loaded after max_attempts.
+    """
+    segmenter = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            segmenter = loader()
+            if segmenter is not None:
+                break
+        except Exception:
+            logger.warning(
+                f"Failed to load {description} (attempt {attempt}/{max_attempts})."
+                " Retrying..."
+            )
+            time.sleep(random.uniform(2, 7))
+
+    if segmenter is None:
+        raise RuntimeError(
+            f"Could not load {description} after {max_attempts} attempts."
+        )
+    return segmenter
+
+
 def load_model_with_decoder(
     model_type: str,
     device: str,
@@ -54,27 +99,31 @@ def load_model_with_decoder(
         segmenter: InstanceSegmentationWithDecoder for generating masks
 
     Raises:
-        Exception: If model loading fails
+        RuntimeError: If model loading fails after retries.
     """
     logger.info(f"Loading model with {model_type} segmentation")
 
-    # Use get_predictor_and_segmenter which properly handles both modes.
-    # When checkpoint=None, micro-SAM downloads/uses the cached pre-trained
-    # model for model_type.
-    _, segmenter = get_predictor_and_segmenter(
-        model_type=model_type,
-        checkpoint=model_path,
-        device=device,
-        segmentation_mode="ais",
-    )
+    description = f"micro-SAM model '{model_type}'"
+    if model_path:
+        description += f" from {model_path}"
 
-    if not isinstance(segmenter, InstanceSegmentationWithDecoder):
-        raise TypeError(
-            "Expected InstanceSegmentationWithDecoder for AIS mode, "
-            f"got {type(segmenter).__name__}"
+    def _load() -> InstanceSegmentationWithDecoder:
+        # When checkpoint=None, micro-SAM downloads/uses the cached pre-trained
+        # model for model_type.
+        _, segmenter = get_predictor_and_segmenter(
+            model_type=model_type,
+            checkpoint=model_path,
+            device=device,
+            segmentation_mode="ais",
         )
+        if not isinstance(segmenter, InstanceSegmentationWithDecoder):
+            raise TypeError(
+                "Expected InstanceSegmentationWithDecoder for AIS mode, "
+                f"got {type(segmenter).__name__}"
+            )
+        return segmenter
 
-    return segmenter
+    return _load_with_retry(_load, description)
 
 
 def segment_image(

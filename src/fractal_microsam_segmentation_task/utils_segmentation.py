@@ -8,10 +8,12 @@ from enum import Enum
 from typing import Any, Optional
 
 import numpy as np
+import torch
 from micro_sam.automatic_segmentation import (
     get_predictor_and_segmenter,
 )
 from micro_sam.instance_segmentation import InstanceSegmentationWithDecoder
+from micro_sam.util import get_sam_model
 
 logger = logging.getLogger(__name__)
 
@@ -59,22 +61,24 @@ def _load_with_retry(
         RuntimeError: If the model cannot be loaded after max_attempts.
     """
     segmenter = None
+    last_error: Exception | None = None
     for attempt in range(1, max_attempts + 1):
         try:
             segmenter = loader()
             if segmenter is not None:
                 break
-        except Exception:
+        except Exception as e:
+            last_error = e
             logger.warning(
-                f"Failed to load {description} (attempt {attempt}/{max_attempts})."
-                " Retrying..."
+                f"Failed to load {description} (attempt {attempt}/{max_attempts}): "
+                f"{e!r}. Retrying..."
             )
             time.sleep(random.uniform(2, 7))
 
     if segmenter is None:
         raise RuntimeError(
             f"Could not load {description} after {max_attempts} attempts."
-        )
+        ) from last_error
     return segmenter
 
 
@@ -108,11 +112,33 @@ def load_model_with_decoder(
         description += f" from {model_path}"
 
     def _load() -> InstanceSegmentationWithDecoder:
+        predictor = None
+        state = None
+        if model_path is not None:
+            state = torch.load(model_path, map_location="cpu", weights_only=False)
+            if isinstance(state, dict) and "decoder_state" in state:
+                # sam_trainer exports the SAM encoder and UNETR decoder into a
+                # single file under "decoder_state". get_predictor_and_segmenter
+                # would forward this whole dict to sam.load_state_dict() and
+                # fail on the unexpected key, so load the encoder separately
+                # (flexible_load_checkpoint ignores unknown keys) and hand the
+                # pre-loaded state through instead of a raw checkpoint path.
+                predictor = get_sam_model(
+                    model_type=model_type,
+                    device=device,
+                    checkpoint_path=model_path,
+                    flexible_load_checkpoint=True,
+                )
+            else:
+                state = None  # plain SAM checkpoint, load it via checkpoint= below
+
         # When checkpoint=None, micro-SAM downloads/uses the cached pre-trained
         # model for model_type.
         _, segmenter = get_predictor_and_segmenter(
             model_type=model_type,
-            checkpoint=model_path,
+            checkpoint=None if predictor is not None else model_path,
+            predictor=predictor,
+            state=state,
             device=device,
             segmentation_mode="ais",
         )

@@ -119,3 +119,8 @@ ENV/
 # Notebooks
 *.ipynb
 .ipynb_checkpoints
+
+# Claude Code
+.claude/
+CLAUDE.md
+CLAUDE.local.md

@@ -160,25 +160,25 @@
             "title": "IteratorConfig",
             "type": "object"
           },
-          "MODEL_ENUM": {
-            "description": "Enum for model selection in micro-SAM segmentation.",
+          "MODEL_TYPE": {
+            "description": "Model choices shown in the Fractal dashboard dropdown.",
             "enum": [
-              "vit_h",
-              "vit_l",
-              "vit_b",
-              "vit_t",
-              "vit_l_lm",
-              "vit_b_lm",
-              "vit_t_lm",
-              "vit_l_em_organelles",
-              "vit_b_em_organelles",
-              "vit_t_em_organelles",
-              "vit_b_medical_imaging",
-              "vit_h_histopathology",
-              "vit_l_histopathology",
-              "vit_b_histopathology"
+              "Generic - natural images (Tiny/MobileSAM)",
+              "Generic - natural images (Basic)",
+              "Generic - natural images (Large)",
+              "Generic - natural images (Huge)",
+              "Light Microscopy (Tiny, fastest)",
+              "Light Microscopy (Basic, default)",
+              "Light Microscopy (Large)",
+              "Electron Microscopy - Organelles (Tiny, fastest)",
+              "Electron Microscopy - Organelles (Basic)",
+              "Electron Microscopy - Organelles (Large)",
+              "Medical Imaging (Basic)",
+              "Histopathology (Basic)",
+              "Histopathology (Large)",
+              "Histopathology (Huge)"
             ],
-            "title": "MODEL_ENUM",
+            "title": "MODEL_TYPE",
             "type": "string"
           },
           "MaskingConfig": {
@@ -367,33 +367,33 @@
             "description": "If the OME-Zarr has multiple resolution levels, the level to use can be specified here. If not provided, the highest resolution level will be used."
           },
           "model_type": {
-            "$ref": "#/$defs/MODEL_ENUM",
-            "default": "vit_b_lm",
+            "$ref": "#/$defs/MODEL_TYPE",
+            "default": "Light Microscopy (Basic, default)",
             "title": "Model Type",
-            "description": "The type of SAM model to use for segmentation. Default = vit_b_lm"
+            "description": "Which pretrained micro-SAM model to use, grouped by imaging domain (light microscopy, electron microscopy, histopathology, medical imaging) and encoder size (Tiny = fastest/least accurate, Huge = slowest/most accurate). Light Microscopy (Basic) is a good default for most fluorescence/brightfield data. Ignored if custom_model is set."
           },
           "custom_model": {
             "title": "Custom Model",
             "type": "string",
-            "description": "Path to a custom SAM model."
+            "description": "Path to a custom SAM model checkpoint, overrides model_type if set."
           },
           "center_distance_threshold": {
             "default": 0.5,
             "title": "Center Distance Threshold",
             "type": "number",
-            "description": "Center distance threshold for decoder mode (default: 0.5)"
+            "description": "Only pixels the model predicts to lie close enough to an object's centre (below this value) can seed a new instance; combined with boundary_distance_threshold. Range 0-1 (default: 0.5). Lower: fewer, stricter seeds (risk of missing/merging faint or touching objects). Higher: more seeds (helps separate touching objects, but risks splitting a single object into several)."
           },
           "boundary_distance_threshold": {
             "default": 0.5,
             "title": "Boundary Distance Threshold",
             "type": "number",
-            "description": "Boundary distance threshold for decoder mode (default: 0.5)"
+            "description": "Only pixels predicted to lie far enough from an object's edge (below this value) can seed a new instance; combined with center_distance_threshold. Range 0-1 (default: 0.5). Lower: seeds must sit well inside an object, giving safer separation of touching objects but risking missed small/thin objects. Higher: seeds allowed closer to edges, recovering small objects but risking merged touching instances."
           },
           "foreground_threshold": {
             "default": 0.5,
             "title": "Foreground Threshold",
             "type": "number",
-            "description": "Foreground threshold for decoder mode (default: 0.5)"
+            "description": "Threshold on the predicted foreground probability that decides whether a pixel belongs to any object at all (independent of the two thresholds above). Range 0-1 (default: 0.5). Lower: more inclusive, recovers dim/faint objects but may pick up background noise as spurious objects. Higher: stricter, rejects noise but may lose faint or low-contrast objects. Tuning tip: touching objects merged into one label -> raise center/boundary_distance_threshold; one object split into fragments -> lower them; objects missing entirely -> lower foreground_threshold; spurious background objects -> raise foreground_threshold."
           },
           "iterator_configuration": {
             "$ref": "#/$defs/IteratorConfig",

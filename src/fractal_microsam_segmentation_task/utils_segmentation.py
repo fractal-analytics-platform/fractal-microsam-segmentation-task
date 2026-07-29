@@ -16,9 +16,8 @@ from micro_sam.instance_segmentation import InstanceSegmentationWithDecoder
 logger = logging.getLogger(__name__)
 
 
-# TODO add easy names for models
 class MODEL_ENUM(Enum):
-    """Enum for model selection in micro-SAM segmentation."""
+    """Raw micro-SAM model identifiers, as passed to get_predictor_and_segmenter."""
 
     VIT_H = "vit_h"
     VIT_L = "vit_l"
@@ -34,6 +33,54 @@ class MODEL_ENUM(Enum):
     VIT_H_HISTOPATHOLOGY = "vit_h_histopathology"
     VIT_L_HISTOPATHOLOGY = "vit_l_histopathology"
     VIT_B_HISTOPATHOLOGY = "vit_b_histopathology"
+
+
+# TODO: once a cluster-hosted model zoo exists, replace MODEL_TYPE/MODEL_ENUM
+# (both static enums) with a dynamically built list so new checkpoints show up
+# in the Fractal dropdown without a code change/release here.
+class MODEL_TYPE(Enum):
+    """Model choices shown in the Fractal dashboard dropdown.
+
+    Friendly labels for the underlying micro-SAM checkpoints (MODEL_ENUM). vit_h/l/b/t
+    are the original, non-microscopy-specific Segment Anything weights (vit_t = MobileSAM);
+    all other entries are micro-SAM checkpoints fine-tuned for a specific imaging domain.
+    Naming: Tiny/Basic/Large/Huge refer to the underlying ViT encoder size (vit_t/b/l/h),
+    not segmentation quality.
+    """
+
+    GENERIC_TINY = "Generic - natural images (Tiny/MobileSAM)"
+    GENERIC_BASIC = "Generic - natural images (Basic)"
+    GENERIC_LARGE = "Generic - natural images (Large)"
+    GENERIC_HUGE = "Generic - natural images (Huge)"
+    LIGHT_MICROSCOPY_TINY = "Light Microscopy (Tiny, fastest)"
+    LIGHT_MICROSCOPY_BASIC = "Light Microscopy (Basic, default)"
+    LIGHT_MICROSCOPY_LARGE = "Light Microscopy (Large)"
+    ELECTRON_MICROSCOPY_ORGANELLES_TINY = "Electron Microscopy - Organelles (Tiny, fastest)"
+    ELECTRON_MICROSCOPY_ORGANELLES_BASIC = "Electron Microscopy - Organelles (Basic)"
+    ELECTRON_MICROSCOPY_ORGANELLES_LARGE = "Electron Microscopy - Organelles (Large)"
+    MEDICAL_IMAGING_BASIC = "Medical Imaging (Basic)"
+    HISTOPATHOLOGY_BASIC = "Histopathology (Basic)"
+    HISTOPATHOLOGY_LARGE = "Histopathology (Large)"
+    HISTOPATHOLOGY_HUGE = "Histopathology (Huge)"
+
+
+# Keep in sync with MODEL_TYPE above; every member must be mapped here.
+MODEL_TYPE_TO_MODEL_ENUM: dict[MODEL_TYPE, MODEL_ENUM] = {
+    MODEL_TYPE.GENERIC_TINY: MODEL_ENUM.VIT_T,
+    MODEL_TYPE.GENERIC_BASIC: MODEL_ENUM.VIT_B,
+    MODEL_TYPE.GENERIC_LARGE: MODEL_ENUM.VIT_L,
+    MODEL_TYPE.GENERIC_HUGE: MODEL_ENUM.VIT_H,
+    MODEL_TYPE.LIGHT_MICROSCOPY_TINY: MODEL_ENUM.VIT_T_LM,
+    MODEL_TYPE.LIGHT_MICROSCOPY_BASIC: MODEL_ENUM.VIT_B_LM,
+    MODEL_TYPE.LIGHT_MICROSCOPY_LARGE: MODEL_ENUM.VIT_L_LM,
+    MODEL_TYPE.ELECTRON_MICROSCOPY_ORGANELLES_TINY: MODEL_ENUM.VIT_T_EM_ORGANELLES,
+    MODEL_TYPE.ELECTRON_MICROSCOPY_ORGANELLES_BASIC: MODEL_ENUM.VIT_B_EM_ORGANELLES,
+    MODEL_TYPE.ELECTRON_MICROSCOPY_ORGANELLES_LARGE: MODEL_ENUM.VIT_L_EM_ORGANELLES,
+    MODEL_TYPE.MEDICAL_IMAGING_BASIC: MODEL_ENUM.VIT_B_MEDICAL_IMAGING,
+    MODEL_TYPE.HISTOPATHOLOGY_BASIC: MODEL_ENUM.VIT_B_HISTOPATHOLOGY,
+    MODEL_TYPE.HISTOPATHOLOGY_LARGE: MODEL_ENUM.VIT_L_HISTOPATHOLOGY,
+    MODEL_TYPE.HISTOPATHOLOGY_HUGE: MODEL_ENUM.VIT_H_HISTOPATHOLOGY,
+}
 
 
 def _load_with_retry(

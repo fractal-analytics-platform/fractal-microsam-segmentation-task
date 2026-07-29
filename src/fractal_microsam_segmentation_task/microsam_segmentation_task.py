@@ -18,7 +18,8 @@ from fractal_microsam_segmentation_task.utils import (
     SkipCreateMaskingRoiTable,
 )
 from fractal_microsam_segmentation_task.utils_segmentation import (
-    MODEL_ENUM,
+    MODEL_TYPE,
+    MODEL_TYPE_TO_MODEL_ENUM,
     load_model_with_decoder,
     segment_image,
 )
@@ -106,7 +107,7 @@ def microsam_segmentation_task(
     label_name: str = "{channel_identifier}_microsam_segmented",
     level_path: str | None = None,
     # Iteration parameters
-    model_type: MODEL_ENUM = MODEL_ENUM.VIT_B_LM,
+    model_type: MODEL_TYPE = MODEL_TYPE.LIGHT_MICROSCOPY_BASIC,
     custom_model: str | None = None,
     center_distance_threshold: float = 0.5,
     boundary_distance_threshold: float = 0.5,
@@ -138,11 +139,36 @@ def microsam_segmentation_task(
         level_path (str | None): If the OME-Zarr has multiple resolution levels,
             the level to use can be specified here. If not provided, the highest
             resolution level will be used.
-        model_type (MODEL_ENUM): The type of SAM model to use for segmentation. Default = vit_b_lm
-        custom_model (str | None): Path to a custom SAM model.
-        center_distance_threshold (float): Center distance threshold for decoder mode (default: 0.5)
-        boundary_distance_threshold (float): Boundary distance threshold for decoder mode (default: 0.5)
-        foreground_threshold (float): Foreground threshold for decoder mode (default: 0.5)
+        model_type (MODEL_TYPE): Which pretrained micro-SAM model to use, grouped by
+            imaging domain (light microscopy, electron microscopy, histopathology,
+            medical imaging) and encoder size (Tiny = fastest/least accurate, Huge =
+            slowest/most accurate). Light Microscopy (Basic) is a good default for
+            most fluorescence/brightfield data. Ignored if custom_model is set.
+        custom_model (str | None): Path to a custom SAM model checkpoint, overrides
+            model_type if set.
+        center_distance_threshold (float): Only pixels the model predicts to lie close
+            enough to an object's centre (below this value) can seed a new instance;
+            combined with boundary_distance_threshold. Range 0-1 (default: 0.5).
+            Lower: fewer, stricter seeds (risk of missing/merging faint or touching
+            objects). Higher: more seeds (helps separate touching objects, but risks
+            splitting a single object into several).
+        boundary_distance_threshold (float): Only pixels predicted to lie far enough
+            from an object's edge (below this value) can seed a new instance; combined
+            with center_distance_threshold. Range 0-1 (default: 0.5).
+            Lower: seeds must sit well inside an object, giving safer separation of
+            touching objects but risking missed small/thin objects. Higher: seeds
+            allowed closer to edges, recovering small objects but risking merged
+            touching instances.
+        foreground_threshold (float): Threshold on the predicted foreground
+            probability that decides whether a pixel belongs to any object at all
+            (independent of the two thresholds above). Range 0-1 (default: 0.5).
+            Lower: more inclusive, recovers dim/faint objects but may pick up
+            background noise as spurious objects. Higher: stricter, rejects noise but
+            may lose faint or low-contrast objects.
+            Tuning tip: touching objects merged into one label -> raise
+            center/boundary_distance_threshold; one object split into fragments ->
+            lower them; objects missing entirely -> lower foreground_threshold;
+            spurious background objects -> raise foreground_threshold.
         iterator_configuration (IteratorConfiguration | None): Advanced
             configuration to control masked and ROI-based iteration.
         pre_post_process (SegmentationTransformConfig): Configuration for pre- and
@@ -171,7 +197,7 @@ def microsam_segmentation_task(
 
     # Based on model_type or custom_model
     model = load_model_with_decoder(
-        model_type=model_type.value,
+        model_type=MODEL_TYPE_TO_MODEL_ENUM[model_type].value,
         device="cuda" if torch.cuda.is_available() else "cpu",
         model_path=custom_model,
     )

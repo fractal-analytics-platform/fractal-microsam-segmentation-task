@@ -80,9 +80,17 @@
                 "type": "number"
               },
               "sigma_z": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
                 "description": "Standard deviation for Gaussian kernel in Z axis.\nIf not specified, no blurring is applied in Z axis.",
-                "title": "Sigma Z",
-                "type": "number"
+                "title": "Sigma Z"
               }
             },
             "title": "GaussianBlurConfig",
@@ -99,14 +107,30 @@
                 "type": "string"
               },
               "kernel_size_xy": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
                 "description": "Shape of kernel in XY plane. If None, the default is 1/8 of image height by\n1/8 of its width.",
-                "title": "Kernel Size XY",
-                "type": "integer"
+                "title": "Kernel Size XY"
               },
               "kernel_size_z": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
                 "description": "Shape of kernel in Z axis. If None, the default is 1/8 of image height by\n1/8 of its width.",
-                "title": "Kernel Size Z",
-                "type": "integer"
+                "title": "Kernel Size Z"
               },
               "clip_limit": {
                 "default": 0.01,
@@ -152,9 +176,17 @@
                 "title": "Masking Iterator Configuration"
               },
               "roi_table": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
                 "description": "Name of a ROI table. If set, the segmentation will be applied to each ROI\nin the table individually. This option can be combined with masking.",
-                "title": "Iterate Over ROIs",
-                "type": "string"
+                "title": "Iterate Over ROIs"
               }
             },
             "title": "IteratorConfig",
@@ -231,9 +263,17 @@
                 "type": "integer"
               },
               "size_z": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
                 "description": "Size in pixels of the median filter in Z axis.\nIf not specified, no filtering is applied in Z axis.",
-                "title": "Size Z",
-                "type": "integer"
+                "title": "Size Z"
               }
             },
             "title": "MedianFilterConfig",
@@ -362,20 +402,55 @@
             "description": "Name of the resulting label image. Optionally, it can contain a placeholder \"{channel_identifier}\" which will be replaced by the first channel identifier specified in the channels parameter."
           },
           "level_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
             "title": "Level Path",
-            "type": "string",
             "description": "If the OME-Zarr has multiple resolution levels, the level to use can be specified here. If not provided, the highest resolution level will be used."
           },
           "model_type": {
             "$ref": "#/$defs/MODEL_TYPE",
             "default": "Light Microscopy (Basic, default)",
             "title": "Model Type",
-            "description": "Which pretrained micro-SAM model to use, grouped by imaging domain (light microscopy, electron microscopy, histopathology, medical imaging) and encoder size (Tiny = fastest/least accurate, Huge = slowest/most accurate). Light Microscopy (Basic) is a good default for most fluorescence/brightfield data. Ignored if custom_model is set."
+            "description": "Which pretrained micro-SAM model to use, grouped by imaging domain (light microscopy, electron microscopy, histopathology, medical imaging) and encoder size (Tiny = fastest/least accurate, Huge = slowest/most accurate). Light Microscopy (Basic) is a good default for most fluorescence/brightfield data. Still required when custom_model is set (it selects the encoder architecture to build): if it does not match custom_model's actual architecture, micro-SAM detects this from the checkpoint itself and corrects it automatically, logging a warning."
           },
           "custom_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
             "title": "Custom Model",
-            "type": "string",
-            "description": "Path to a custom SAM model checkpoint, overrides model_type if set."
+            "description": "Path to a custom SAM model checkpoint, used instead of the pretrained checkpoint for model_type."
+          },
+          "halo": {
+            "default": [
+              128,
+              128
+            ],
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Halo",
+            "type": "array",
+            "description": "Overlap (y, x) between tiles, in pixels. Only used when an image exceeds the model's native input resolution (typically 1024px) and is therefore tiled to avoid downscaling objects; ignored for smaller images. Larger values reduce tile-seam segmentation artifacts at the cost of extra compute."
           },
           "center_distance_threshold": {
             "default": 0.5,
@@ -396,7 +471,15 @@
             "description": "Threshold on the predicted foreground probability that decides whether a pixel belongs to any object at all (independent of the two thresholds above). Range 0-1 (default: 0.5). Lower: more inclusive, recovers dim/faint objects but may pick up background noise as spurious objects. Higher: stricter, rejects noise but may lose faint or low-contrast objects. Tuning tip: touching objects merged into one label -> raise center/boundary_distance_threshold; one object split into fragments -> lower them; objects missing entirely -> lower foreground_threshold; spurious background objects -> raise foreground_threshold."
           },
           "iterator_configuration": {
-            "$ref": "#/$defs/IteratorConfig",
+            "anyOf": [
+              {
+                "$ref": "#/$defs/IteratorConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
             "title": "Iterator Configuration",
             "description": "Advanced configuration to control masked and ROI-based iteration."
           },
@@ -449,6 +532,6 @@
     }
   ],
   "has_args_schemas": true,
-  "args_schema_version": "pydantic_v2",
+  "args_schema_version": "fractal_schema_v1",
   "authors": "Niklas Khoss & Joel Luethi"
 }

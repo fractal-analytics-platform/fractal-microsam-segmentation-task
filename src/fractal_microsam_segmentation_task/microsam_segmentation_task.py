@@ -109,6 +109,7 @@ def microsam_segmentation_task(
     # Iteration parameters
     model_type: MODEL_TYPE = MODEL_TYPE.LIGHT_MICROSCOPY_BASIC,
     custom_model: str | None = None,
+    halo: tuple[int, int] = (128, 128),
     center_distance_threshold: float = 0.5,
     boundary_distance_threshold: float = 0.5,
     foreground_threshold: float = 0.5,
@@ -143,9 +144,17 @@ def microsam_segmentation_task(
             imaging domain (light microscopy, electron microscopy, histopathology,
             medical imaging) and encoder size (Tiny = fastest/least accurate, Huge =
             slowest/most accurate). Light Microscopy (Basic) is a good default for
-            most fluorescence/brightfield data. Ignored if custom_model is set.
-        custom_model (str | None): Path to a custom SAM model checkpoint, overrides
-            model_type if set.
+            most fluorescence/brightfield data. Still required when custom_model is
+            set (it selects the encoder architecture to build): if it does not match
+            custom_model's actual architecture, micro-SAM detects this from the
+            checkpoint itself and corrects it automatically, logging a warning.
+        custom_model (str | None): Path to a custom SAM model checkpoint, used instead
+            of the pretrained checkpoint for model_type.
+        halo (tuple[int, int]): Overlap (y, x) between tiles, in pixels. Only used
+            when an image exceeds the model's native input resolution (typically
+            1024px) and is therefore tiled to avoid downscaling objects; ignored for
+            smaller images. Larger values reduce tile-seam segmentation artifacts at
+            the cost of extra compute.
         center_distance_threshold (float): Only pixels the model predicts to lie close
             enough to an object's centre (below this value) can seed a new instance;
             combined with boundary_distance_threshold. Range 0-1 (default: 0.5).
@@ -196,7 +205,7 @@ def microsam_segmentation_task(
     logger.info(f"Formatted label name: {label_name=}")
 
     # Based on model_type or custom_model
-    model = load_model_with_decoder(
+    predictor, segmenter = load_model_with_decoder(
         model_type=MODEL_TYPE_TO_MODEL_ENUM[model_type].value,
         device="cuda" if torch.cuda.is_available() else "cpu",
         model_path=custom_model,
@@ -227,7 +236,11 @@ def microsam_segmentation_task(
     # Run the core segmentation loop
     compute_segmentation(
         segmentation_func=lambda x: segment_image(
-            image=x, segmenter=model, generate_kwargs=microsam_kwargs
+            image=x,
+            predictor=predictor,
+            segmenter=segmenter,
+            halo=halo,
+            generate_kwargs=microsam_kwargs,
         ),
         iterator=iterator,
     )

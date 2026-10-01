@@ -20,6 +20,9 @@ jobs:
     name: "Core, ${{  matrix.os }}"
     runs-on: ${{  matrix.os }}
     timeout-minutes: 30
+    env:
+      # CI runners have no GPU; mock the CUDA virtual package so the CUDA pytorch env installs
+      CONDA_OVERRIDE_CUDA: "12"
 
     steps:
       - uses: actions/checkout@v4
@@ -30,19 +33,22 @@ jobs:
       - name: Set up pixi
         uses: prefix-dev/setup-pixi@v0.8.0
         with:
-          # Same version as the Fractal server and local dev, so lock handling matches
+          # Same version as the Fractal server, so install behaviour matches
           pixi-version: v0.70.2
           cache: true
           environments: dev
-
-      - name: Install default env frozen on a GPU-less host (as Fractal's task collection does)
-        run: pixi install --frozen -e default
 
       - name: Check if manifest has changed
         run: pixi run -e dev fractal-manifest check --package fractal_microsam_segmentation_task
 
       - name: Test core library with pytest
         run: pixi run -e dev pytest tests
+
+      - name: Install default env as Fractal does (CUDA requirement stripped, frozen, no GPU)
+        run: |
+          sed -i '/^\[tool.pixi.system-requirements\]$/,/^cuda = /d' pyproject.toml
+          ! grep -q 'system-requirements' pyproject.toml
+          env -u CONDA_OVERRIDE_CUDA pixi install --frozen -e default
   
   deploy:
     name: Deploy
@@ -71,7 +77,10 @@ jobs:
       - name: 👷 Build
         run: |
           python -m pip install build
-          python -m build
+          sed -i '/^\[tool.pixi.system-requirements\]$/,/^cuda = /d' pyproject.toml
+          ! grep -q 'system-requirements' pyproject.toml
+          # the stripped file makes the tree dirty; pin the version to the tag instead
+          SETUPTOOLS_SCM_PRETEND_VERSION="${GITHUB_REF_NAME#v}" python -m build
 
       - name: 🚢 Publish to PyPI
         # TODO remove the "if: false" line when the package is ready for pypi release

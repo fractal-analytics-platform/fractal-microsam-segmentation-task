@@ -36,6 +36,9 @@ jobs:
           cache: true
           environments: dev
 
+      - name: Install default env without CUDA mock (as Fractal's task collection does)
+        run: env -u CONDA_OVERRIDE_CUDA pixi install --frozen -e default
+
       - name: Check if manifest has changed
         run: pixi run -e dev fractal-manifest check --package fractal_microsam_segmentation_task
 

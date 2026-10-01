@@ -85,24 +85,21 @@ skip-magic-trailing-comma = false # default is false
 channels = ["conda-forge"]
 platforms = ["osx-arm64", "linux-64", "win-64"]
 
-# Conda-forge dependencies: 
-# micro_sam is not available on pypi
-# ngio via conda-forge, to avoid 
-[tool.pixi.dependencies]
-micro_sam = ">=1.6.2,<2"
-ngio = ">=0.5.8,<0.6.0"
-
-# Cluster GPUs (A40, driver CUDA 12.8): without this the solver picks CPU-only pytorch builds
-[tool.pixi.system-requirements]
-cuda = "12"
-
-[tool.pixi.target.linux-64.dependencies]
-pytorch-gpu = "*"
-
+# Everything runtime comes from PyPI on purpose. conda-forge pytorch CUDA builds carry a
+# hard `__cuda` dependency, so Fractal's `pixi install --frozen` on a GPU-less server
+# refuses them. PyPI wheels bundle CUDA and install anywhere.
 [tool.pixi.pypi-dependencies]
 fractal-microsam-segmentation-task = { path = ".", editable = true }
+micro-sam = ">=1.8.14,<2"
+ngio = ">=0.5.8,<0.6.0"
 fractal-task-tools = ">=0.5.0, <0.6"
 fractal-tasks-utils = ">=0.1.5, <0.2"
+
+# CUDA 12.8 wheels for the cluster GPUs (A40, driver CUDA 12.8). PyPI's default torch wheel
+# is built for CUDA 13, which needs a newer driver. macOS/Windows keep PyPI's torch.
+[tool.pixi.target.linux-64.pypi-dependencies]
+torch = { version = ">=2.5", index = "https://download.pytorch.org/whl/cu128" }
+torchvision = { version = "*", index = "https://download.pytorch.org/whl/cu128" }
 
 [tool.pixi.feature.dev.pypi-dependencies]
 fractal-microsam-segmentation-task = { path = ".", editable = true, extras = ["dev"] }

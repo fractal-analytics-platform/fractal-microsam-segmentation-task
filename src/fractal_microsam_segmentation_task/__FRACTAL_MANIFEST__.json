@@ -195,14 +195,11 @@
           "MODEL_TYPE": {
             "description": "Model choices shown in the Fractal dashboard dropdown.",
             "enum": [
-              "Generic - natural images (Tiny/MobileSAM)",
               "Generic - natural images (Basic)",
               "Generic - natural images (Large)",
               "Generic - natural images (Huge)",
-              "Light Microscopy (Tiny, fastest)",
               "Light Microscopy (Basic, default)",
               "Light Microscopy (Large)",
-              "Electron Microscopy - Organelles (Tiny, fastest)",
               "Electron Microscopy - Organelles (Basic)",
               "Electron Microscopy - Organelles (Large)",
               "Medical Imaging (Basic)",
@@ -418,7 +415,7 @@
             "$ref": "#/$defs/MODEL_TYPE",
             "default": "Light Microscopy (Basic, default)",
             "title": "Model Type",
-            "description": "Which pretrained micro-SAM model to use, grouped by imaging domain (light microscopy, electron microscopy, histopathology, medical imaging) and encoder size (Tiny = fastest/least accurate, Huge = slowest/most accurate). Light Microscopy (Basic) is a good default for most fluorescence/brightfield data. Still required when custom_model is set (it selects the encoder architecture to build): if it does not match custom_model's actual architecture, micro-SAM detects this from the checkpoint itself and corrects it automatically, logging a warning."
+            "description": "Which pretrained micro-SAM model to use, grouped by imaging domain (light microscopy, electron microscopy, histopathology, medical imaging) and encoder size (Basic = fastest/least accurate, Huge = slowest/most accurate). Light Microscopy (Basic) is a good default for most fluorescence/brightfield data. Still required when custom_model is set (it selects the encoder architecture to build): if it does not match custom_model's actual architecture, micro-SAM detects this from the checkpoint itself and corrects it automatically, logging a warning."
           },
           "custom_model": {
             "anyOf": [

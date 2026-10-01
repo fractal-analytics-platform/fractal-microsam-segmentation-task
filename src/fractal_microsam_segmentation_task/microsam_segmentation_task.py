@@ -143,7 +143,7 @@ def microsam_segmentation_task(
             resolution level will be used.
         model_type (MODEL_TYPE): Which pretrained micro-SAM model to use, grouped by
             imaging domain (light microscopy, electron microscopy, histopathology,
-            medical imaging) and encoder size (Tiny = fastest/least accurate, Huge =
+            medical imaging) and encoder size (Basic = fastest/least accurate, Huge =
             slowest/most accurate). Light Microscopy (Basic) is a good default for
             most fluorescence/brightfield data. Still required when custom_model is
             set (it selects the encoder architecture to build): if it does not match

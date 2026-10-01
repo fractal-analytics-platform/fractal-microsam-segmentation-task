@@ -33,6 +33,8 @@ jobs:
       - name: Set up pixi
         uses: prefix-dev/setup-pixi@v0.8.0
         with:
+          # Same version as the Fractal server and local dev, so lock handling matches
+          pixi-version: v0.70.2
           cache: true
           environments: dev
 

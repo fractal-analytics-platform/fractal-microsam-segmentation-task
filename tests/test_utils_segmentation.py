@@ -13,6 +13,7 @@ import torch
 from micro_sam.instance_segmentation import TiledInstanceSegmentationWithDecoder
 
 from fractal_microsam_segmentation_task.utils_segmentation import (
+    _is_architecture_supported,
     _merge_tile_seam_splits,
     segment_image,
     select_device,
@@ -127,7 +128,17 @@ class TestSelectDevice:
     def test_returns_cuda_when_available(self, monkeypatch):
         monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
         monkeypatch.setattr(torch.cuda, "get_device_name", lambda index: "fake-gpu")
+        monkeypatch.setattr(torch.cuda, "get_device_capability", lambda index: (8, 6))
+        monkeypatch.setattr(torch.cuda, "get_arch_list", lambda: ["sm_75", "sm_86"])
         assert select_device() == "cuda"
+
+    def test_raises_when_gpu_architecture_not_compiled(self, monkeypatch):
+        monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+        monkeypatch.setattr(torch.cuda, "get_device_name", lambda index: "fake-v100")
+        monkeypatch.setattr(torch.cuda, "get_device_capability", lambda index: (7, 0))
+        monkeypatch.setattr(torch.cuda, "get_arch_list", lambda: ["sm_75", "sm_86"])
+        with pytest.raises(RuntimeError, match="no kernels"):
+            select_device()
 
     def test_raises_without_cuda_by_default(self, monkeypatch):
         monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
@@ -137,3 +148,18 @@ class TestSelectDevice:
     def test_falls_back_to_cpu_when_allowed(self, monkeypatch):
         monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
         assert select_device(allow_cpu=True) == "cpu"
+
+
+class TestIsArchitectureSupported:
+    @pytest.mark.parametrize(
+        ("capability", "architectures", "expected"),
+        [
+            ((7, 0), ["sm_70", "sm_75"], True),
+            ((7, 0), ["sm_75", "sm_80", "sm_86", "sm_90"], False),
+            ((8, 6), ["sm_75", "compute_75"], True),
+            ((7, 0), ["sm_75", "compute_75"], False),
+            ((9, 0), ["sm_80", "compute_80"], True),
+        ],
+    )
+    def test_architecture_support(self, capability, architectures, expected):
+        assert _is_architecture_supported(capability, architectures) is expected

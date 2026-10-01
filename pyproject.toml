@@ -95,11 +95,14 @@ ngio = ">=0.5.8,<0.6.0"
 fractal-task-tools = ">=0.5.0, <0.6"
 fractal-tasks-utils = ">=0.1.5, <0.2"
 
-# CUDA 12.8 wheels for the cluster GPUs (A40, driver CUDA 12.8). PyPI's default torch wheel
-# is built for CUDA 13, which needs a newer driver. macOS/Windows keep PyPI's torch.
+# CUDA 12.6 wheels for the cluster GPUs (mixed V100 sm_70 and A40 sm_86, driver CUDA 12.8).
+# Not cu128: those wheels dropped Volta kernels (V100: "no kernel image is available").
+# <2.15: PyTorch 2.14 is the last release with prebuilt Volta (cu126) wheels.
+# PyPI's default torch wheel is cu13, which needs an even newer driver. macOS/Windows keep
+# PyPI's torch.
 [tool.pixi.target.linux-64.pypi-dependencies]
-torch = { version = ">=2.5", index = "https://download.pytorch.org/whl/cu128" }
-torchvision = { version = "*", index = "https://download.pytorch.org/whl/cu128" }
+torch = { version = ">=2.5,<2.15", index = "https://download.pytorch.org/whl/cu126" }
+torchvision = { version = "*", index = "https://download.pytorch.org/whl/cu126" }
 
 [tool.pixi.feature.dev.pypi-dependencies]
 fractal-microsam-segmentation-task = { path = ".", editable = true, extras = ["dev"] }

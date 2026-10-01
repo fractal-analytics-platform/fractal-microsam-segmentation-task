@@ -104,12 +104,38 @@ def log_compute_environment() -> None:
         logger.info(f"GPU device: {torch.cuda.get_device_name(0)}")
 
 
+def _is_architecture_supported(
+    capability: tuple[int, int], compiled_architectures: list[str]
+) -> bool:
+    """Check whether a torch build has kernels for a GPU compute capability.
+
+    Args:
+        capability: (major, minor) compute capability of the GPU, e.g. (7, 0) for V100.
+        compiled_architectures: `torch.cuda.get_arch_list()`, e.g. ['sm_75',
+            'compute_90'].
+
+    Returns:
+        True if there are SASS kernels for the exact capability, or PTX for an equal or
+        lower one (which the driver can JIT-compile).
+    """
+    device_cc = capability[0] * 10 + capability[1]
+    for architecture in compiled_architectures:
+        kind, _, number = architecture.partition("_")
+        if not number.isdigit():
+            continue
+        if kind == "sm" and int(number) == device_cc:
+            return True
+        if kind == "compute" and int(number) <= device_cc:
+            return True
+    return False
+
+
 def select_device(allow_cpu: bool = False) -> str:
     """Select the inference device and log the compute environment.
 
-    Fails fast when CUDA is unavailable, because micro-SAM ViT inference on CPU is
-    roughly an order of magnitude slower and is almost always an environment mistake
-    (e.g. a CPU-only torch build) rather than intended.
+    Fails fast when CUDA is unavailable or the torch build has no kernels for the GPU.
+    micro-SAM ViT inference on CPU is roughly an order of magnitude slower and is almost
+    always an environment mistake (e.g. a CPU-only torch build) rather than intended.
 
     Args:
         allow_cpu: If True, fall back to CPU (with a warning) instead of raising.
@@ -122,6 +148,15 @@ def select_device(allow_cpu: bool = False) -> str:
     """
     log_compute_environment()
     if torch.cuda.is_available():
+        capability = torch.cuda.get_device_capability(0)
+        compiled_architectures = torch.cuda.get_arch_list()
+        if not _is_architecture_supported(capability, compiled_architectures):
+            raise RuntimeError(
+                f"This torch build has no kernels for the GPU's compute capability "
+                f"{capability[0]}.{capability[1]} "
+                f"(built for {compiled_architectures}). "
+                "Use a torch wheel that still supports this GPU generation."
+            )
         return "cuda"
     if not allow_cpu:
         raise RuntimeError(

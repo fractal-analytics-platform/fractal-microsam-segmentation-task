@@ -33,3 +33,11 @@ package would pull in conda pytorch. Conda CUDA pytorch cannot be installed by F
 git-sourced dependency. On a GPU the speed gain of Tiny over Basic is small. To restore
 them: add `mobile-sam` (pinned commit) to the pixi pypi-dependencies and re-add the three
 enum entries in `utils_segmentation.py`.
+
+## GPU architectures and the torch wheel
+
+On linux-64 the task uses torch CUDA 12.6 wheels (`pyproject.toml`, PyTorch index `cu126`).
+Do not move to `cu128`: those wheels dropped Volta kernels (V100, compute capability 7.0),
+and the cluster mixes V100 and A40 nodes. `select_device` fails immediately, with the
+supported architectures in the message, if the GPU is not covered by the installed wheel.
+PyTorch 2.14 is the last release with prebuilt cu126 (Volta) wheels, hence `torch<2.15`.

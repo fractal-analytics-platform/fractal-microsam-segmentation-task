@@ -92,15 +92,14 @@ platforms = ["osx-arm64", "linux-64", "win-64"]
 micro_sam = ">=1.6.2,<2"
 ngio = ">=0.5.8,<0.6.0"
 
-# CUDA pytorch for the cluster GPUs (A40, driver CUDA 12.8). The requirement lives in a
-# feature attached only to `dev`, not to `default`: Fractal collects `default` with
-# `pixi install --frozen` on a GPU-less server, which refuses to install an environment
-# that declares a CUDA system requirement. `default` shares dev's solve-group, so it still
-# gets the CUDA build in pixi.lock.
-[tool.pixi.feature.cuda.system-requirements]
-cuda = "12"
-
-[tool.pixi.feature.cuda.target.linux-64.dependencies]
+# Cluster GPUs (A40, driver CUDA 12.8): without this the solver picks CPU-only pytorch builds
+# Force CUDA pytorch on linux-64 (cluster A40s, driver CUDA 12.8). No CUDA
+# [system-requirements] on purpose: Fractal collects the env with `pixi install --frozen`
+# on a GPU-less server, which refuses envs declaring a CUDA requirement (and a solve group
+# shares requirements across its envs). The lock must instead be solved on a Linux host
+# with the __cuda virtual package mocked (the "Relock" workflow, or
+# `CONDA_OVERRIDE_CUDA=12 pixi lock` on Linux); re-locking on Windows/macOS fails loudly.
+[tool.pixi.target.linux-64.dependencies]
 pytorch-gpu = "*"
 
 [tool.pixi.pypi-dependencies]
@@ -113,7 +112,7 @@ fractal-microsam-segmentation-task = { path = ".", editable = true, extras = ["d
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
-dev = { features = ["dev", "cuda"], solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
 
 [tool.pixi.tasks]
 install-pre-commit = { cmd = ["pre-commit", "install"] }

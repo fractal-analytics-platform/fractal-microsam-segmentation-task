@@ -20,9 +20,6 @@ jobs:
     name: "Core, ${{  matrix.os }}"
     runs-on: ${{  matrix.os }}
     timeout-minutes: 30
-    env:
-      # CI runners have no GPU; mock the CUDA virtual package so the CUDA pytorch env installs
-      CONDA_OVERRIDE_CUDA: "12"
 
     steps:
       - uses: actions/checkout@v4
@@ -38,8 +35,8 @@ jobs:
           cache: true
           environments: dev
 
-      - name: Install default env without CUDA mock (as Fractal's task collection does)
-        run: env -u CONDA_OVERRIDE_CUDA pixi install --frozen -e default
+      - name: Install default env frozen on a GPU-less host (as Fractal's task collection does)
+        run: pixi install --frozen -e default
 
       - name: Check if manifest has changed
         run: pixi run -e dev fractal-manifest check --package fractal_microsam_segmentation_task

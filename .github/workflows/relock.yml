@@ -1,5 +1,7 @@
 name: Relock
-on: workflow_dispatch
+on:
+  push:
+    branches: [fix/cuda-lock-without-host-requirement]
 jobs:
   relock:
     runs-on: ubuntu-22.04

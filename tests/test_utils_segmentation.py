@@ -9,11 +9,13 @@ from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
+import torch
 from micro_sam.instance_segmentation import TiledInstanceSegmentationWithDecoder
 
 from fractal_microsam_segmentation_task.utils_segmentation import (
     _merge_tile_seam_splits,
     segment_image,
+    select_device,
 )
 
 
@@ -119,3 +121,19 @@ class TestMergeTileSeamSplits:
         masks = np.zeros((100, 100), dtype=np.int32)
         merged = _merge_tile_seam_splits(masks, tile_shape=(50, 100), halo=(10, 10))
         assert merged is masks
+
+
+class TestSelectDevice:
+    def test_returns_cuda_when_available(self, monkeypatch):
+        monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+        monkeypatch.setattr(torch.cuda, "get_device_name", lambda index: "fake-gpu")
+        assert select_device() == "cuda"
+
+    def test_raises_without_cuda_by_default(self, monkeypatch):
+        monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+        with pytest.raises(RuntimeError, match="CUDA is not available"):
+            select_device()
+
+    def test_falls_back_to_cpu_when_allowed(self, monkeypatch):
+        monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+        assert select_device(allow_cpu=True) == "cpu"

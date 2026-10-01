@@ -39,6 +39,10 @@ def mock_microsam(monkeypatch):
         "fractal_microsam_segmentation_task.microsam_segmentation_task.segment_image",
         _fake_segment_image,
     )
+    monkeypatch.setattr(
+        "fractal_microsam_segmentation_task.microsam_segmentation_task.select_device",
+        MagicMock(return_value="cpu"),
+    )
     return mock_predictor, mock_segmenter
 
 

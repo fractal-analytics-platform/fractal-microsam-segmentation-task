@@ -15,4 +15,5 @@ print("Start debug run")  # Debugging output
 microsam_segmentation_task(
     zarr_url="C:/Repos/test_data/test_microsam/image_01.zarr",
     channel=ChannelSelectionModel(identifier="channel_0", mode="label"),
+    allow_cpu=True,
 )

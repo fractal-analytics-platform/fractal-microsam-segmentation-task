@@ -3,6 +3,7 @@
 import contextlib
 import io
 import logging
+import os
 import random
 import time
 from collections.abc import Callable
@@ -10,6 +11,7 @@ from enum import Enum
 from typing import Any, Optional
 
 import numpy as np
+import torch
 from micro_sam.automatic_segmentation import (
     get_predictor_and_segmenter,
 )
@@ -86,6 +88,46 @@ MODEL_TYPE_TO_MODEL_ENUM: dict[MODEL_TYPE, MODEL_ENUM] = {
     MODEL_TYPE.HISTOPATHOLOGY_LARGE: MODEL_ENUM.VIT_L_HISTOPATHOLOGY,
     MODEL_TYPE.HISTOPATHOLOGY_HUGE: MODEL_ENUM.VIT_H_HISTOPATHOLOGY,
 }
+
+
+def log_compute_environment() -> None:
+    """Log torch/CUDA build and GPU visibility, to diagnose silent CPU fallbacks."""
+    logger.info(
+        f"torch={torch.__version__}, torch CUDA build={torch.version.cuda}, "
+        f"cuda available={torch.cuda.is_available()}, "
+        f"CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')}, "
+        f"SLURM_JOB_GPUS={os.environ.get('SLURM_JOB_GPUS')}"
+    )
+    if torch.cuda.is_available():
+        logger.info(f"GPU device: {torch.cuda.get_device_name(0)}")
+
+
+def select_device(allow_cpu: bool = False) -> str:
+    """Select the inference device and log the compute environment.
+
+    Fails fast when CUDA is unavailable, because micro-SAM ViT inference on CPU is
+    roughly an order of magnitude slower and is almost always an environment mistake
+    (e.g. a CPU-only torch build) rather than intended.
+
+    Args:
+        allow_cpu: If True, fall back to CPU (with a warning) instead of raising.
+
+    Returns:
+        'cuda' or 'cpu'.
+
+    Raises:
+        RuntimeError: If CUDA is unavailable and `allow_cpu` is False.
+    """
+    log_compute_environment()
+    if torch.cuda.is_available():
+        return "cuda"
+    if not allow_cpu:
+        raise RuntimeError(
+            "CUDA is not available (see the logged torch build and CUDA_VISIBLE_DEVICES). "
+            "Refusing to run micro-SAM on CPU; set allow_cpu=True to override."
+        )
+    logger.warning("CUDA is not available, running micro-SAM on CPU (slow).")
+    return "cpu"
 
 
 def _load_with_retry(

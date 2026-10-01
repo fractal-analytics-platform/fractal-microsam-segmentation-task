@@ -433,6 +433,12 @@
             "title": "Custom Model",
             "description": "Path to a custom SAM model checkpoint, used instead of the pretrained checkpoint for model_type."
           },
+          "allow_cpu": {
+            "default": false,
+            "title": "Allow Cpu",
+            "type": "boolean",
+            "description": "If False (default), the task fails when no GPU is available instead of silently running on CPU, which is far slower. Set to True only for small tests."
+          },
           "halo": {
             "default": [
               128,

@@ -2,7 +2,6 @@
 
 import logging
 
-import torch
 from fractal_tasks_utils.segmentation import (
     IteratorConfig,
     compute_segmentation,
@@ -22,6 +21,7 @@ from fractal_microsam_segmentation_task.utils_segmentation import (
     MODEL_TYPE_TO_MODEL_ENUM,
     load_model_with_decoder,
     segment_image,
+    select_device,
 )
 
 logger = logging.getLogger("microsam_segmentation_task")
@@ -109,6 +109,7 @@ def microsam_segmentation_task(
     # Iteration parameters
     model_type: MODEL_TYPE = MODEL_TYPE.LIGHT_MICROSCOPY_BASIC,
     custom_model: str | None = None,
+    allow_cpu: bool = False,
     halo: tuple[int, int] = (128, 128),
     center_distance_threshold: float = 0.5,
     boundary_distance_threshold: float = 0.5,
@@ -150,6 +151,9 @@ def microsam_segmentation_task(
             checkpoint itself and corrects it automatically, logging a warning.
         custom_model (str | None): Path to a custom SAM model checkpoint, used instead
             of the pretrained checkpoint for model_type.
+        allow_cpu (bool): If False (default), the task fails when no GPU is available
+            instead of silently running on CPU, which is far slower. Set to True only
+            for small tests.
         halo (tuple[int, int]): Overlap (y, x) between tiles, in pixels. Only used
             when an image exceeds the model's native input resolution (typically
             1024px) and is therefore tiled to avoid downscaling objects; ignored for
@@ -207,7 +211,7 @@ def microsam_segmentation_task(
     # Based on model_type or custom_model
     predictor, segmenter = load_model_with_decoder(
         model_type=MODEL_TYPE_TO_MODEL_ENUM[model_type].value,
-        device="cuda" if torch.cuda.is_available() else "cpu",
+        device=select_device(allow_cpu=allow_cpu),
         model_path=custom_model,
     )
 

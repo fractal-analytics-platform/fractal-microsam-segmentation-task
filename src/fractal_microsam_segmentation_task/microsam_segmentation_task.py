@@ -109,7 +109,7 @@ def microsam_segmentation_task(
     # Iteration parameters
     model_type: MODEL_TYPE = MODEL_TYPE.LIGHT_MICROSCOPY_BASIC,
     custom_model: str | None = None,
-    allow_cpu: bool = False,
+    allow_cpu: bool = True,
     halo: tuple[int, int] = (128, 128),
     center_distance_threshold: float = 0.5,
     boundary_distance_threshold: float = 0.5,
@@ -151,9 +151,9 @@ def microsam_segmentation_task(
             checkpoint itself and corrects it automatically, logging a warning.
         custom_model (str | None): Path to a custom SAM model checkpoint, used instead
             of the pretrained checkpoint for model_type.
-        allow_cpu (bool): If False (default), the task fails when no GPU is available
-            instead of silently running on CPU, which is far slower. Set to True only
-            for small tests.
+        allow_cpu (bool): If False, the task fails when no GPU is available
+            instead of silently running on CPU, which is far slower. If True,
+            it logs a warning if no GPU is available and runs on CPU.
         halo (tuple[int, int]): Overlap (y, x) between tiles, in pixels. Only used
             when an image exceeds the model's native input resolution (typically
             1024px) and is therefore tiled to avoid downscaling objects; ignored for

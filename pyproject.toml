@@ -26,6 +26,12 @@ authors = [
 
 # Required Python version and dependencies
 requires-python = ">=3.11,<3.15"
+dependencies = [
+    "micro-sam>=1.8.14,<2",
+    "ngio>=0.5.8,<0.6.0",
+    "fractal-task-tools>=0.5.0,<0.6",
+    "fractal-tasks-utils>=0.1.5,<0.2",
+]
 
 # Optional dependencies (e.g. for `pip install -e ".[dev]"`, see
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies)
@@ -39,7 +45,6 @@ dev = [
     "jsonschema",
     "ruff",
     "pre-commit",
-    "fractal-task-tools>=0.5.0,<0.6",
 ]
 
 # https://docs.astral.sh/ruff
@@ -85,21 +90,19 @@ skip-magic-trailing-comma = false # default is false
 channels = ["conda-forge"]
 platforms = ["osx-arm64", "linux-64", "win-64"]
 
-# Everything runtime comes from PyPI on purpose. conda-forge pytorch CUDA builds carry a
-# hard `__cuda` dependency, so Fractal's `pixi install --frozen` on a GPU-less server
-# refuses them. PyPI wheels bundle CUDA and install anywhere.
+# Runtime deps live in [project.dependencies] and come from PyPI on purpose: conda-forge
+# pytorch CUDA builds carry a hard `__cuda` dependency, so Fractal's `pixi install --frozen`
+# on a GPU-less server refuses them. PyPI wheels bundle CUDA and install anywhere.
 [tool.pixi.pypi-dependencies]
 fractal-microsam-segmentation-task = { path = ".", editable = true }
-micro-sam = ">=1.8.14,<2"
-ngio = ">=0.5.8,<0.6.0"
-fractal-task-tools = ">=0.5.0, <0.6"
-fractal-tasks-utils = ">=0.1.5, <0.2"
 
-# CUDA 12.8 wheels for the cluster GPUs (A40, driver CUDA 12.8). PyPI's default torch wheel
-# is built for CUDA 13, which needs a newer driver. macOS/Windows keep PyPI's torch.
+# CUDA 12.6 torch wheels on linux-64. PyPI's default torch is built for CUDA 13 (needs a
+# newer driver than the cluster's 12.8). cu126 runs on the 12.8 driver, includes kernels
+# for older GPUs (V100 etc.) that cu128 dropped, and still gets new torch releases.
+# It does not support Blackwell (sm_100/sm_120). macOS/Windows keep PyPI's torch.
 [tool.pixi.target.linux-64.pypi-dependencies]
-torch = { version = ">=2.5", index = "https://download.pytorch.org/whl/cu128" }
-torchvision = { version = "*", index = "https://download.pytorch.org/whl/cu128" }
+torch = { version = ">=2.5", index = "https://download.pytorch.org/whl/cu126" }
+torchvision = { version = "*", index = "https://download.pytorch.org/whl/cu126" }
 
 [tool.pixi.feature.dev.pypi-dependencies]
 fractal-microsam-segmentation-task = { path = ".", editable = true, extras = ["dev"] }
